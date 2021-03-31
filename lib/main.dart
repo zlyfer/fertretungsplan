@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_search_bar/flutter_search_bar.dart';
 
 void main() {
   runApp(MyApp());
@@ -31,10 +32,94 @@ class MyHomePage extends StatefulWidget {
   final String title;
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  Vertretungsplan createState() => Vertretungsplan();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
+class Vertretungsplan extends State<MyHomePage> {
+  SearchBar searchBar;
+
+  @override
+  void initState() {
+    super.initState();
+    this.init();
+  }
+
+  AppBar buildAppBar(BuildContext context) {
+    return new AppBar(
+      title: Text(
+        widget.title,
+      ),
+      leading: IconButton(onPressed: () {}, icon: const Icon(Icons.menu)),
+      actions: <Widget>[
+        searchBar.getSearchAction(context),
+        IconButton(
+            onPressed: () {
+              this.init();
+            },
+            icon: const Icon(Icons.refresh)),
+        // PopupMenuButton<String>(
+        //   onSelected: (String result) {
+        //     setState(() {
+        //       switch (result) {
+        //         case "search":
+        //           break;
+        //         default:
+        //           break;
+        //       }
+        //     });
+        //   },
+        //   itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+        //     const PopupMenuItem<String>(
+        //       value: "search",
+        //       child: Text('Suche..'),
+        //     ),
+        //   ],
+        // )
+        // IconButton(
+        //     onPressed: () {
+        //       //
+        //     },
+        //     icon: const Icon(Icons.more_vert)),
+      ],
+    );
+  }
+
+  Vertretungsplan() {
+    searchBar = new SearchBar(
+        inBar: true,
+        setState: setState,
+        onSubmitted: (searchText) {
+          this.search(searchText);
+        },
+        onChanged: (searchText) {
+          this.search(searchText);
+        },
+        buildDefaultAppBar: buildAppBar,
+        hintText: "Suche..");
+  }
+
+  search(searchText) {
+    setState(() {
+      this.combination = [];
+      this.combination.add(this.headerNames);
+      if (searchText == "")
+        this.combination.addAll(this.vplan);
+      else
+        this.combination.addAll(this
+            .vplan
+            .where((e) => (e["Kurs"].contains(searchText) ||
+                e["Wochentag"].contains(searchText) ||
+                e["Stunde"].contains(searchText) ||
+                e["Fach"].contains(searchText) ||
+                e["Lehrer"].contains(searchText) ||
+                e["Raum"].contains(searchText) ||
+                e["Info"].contains(searchText) ||
+                e["Vertretungstext"].contains(searchText)))
+            .toList());
+    });
+  }
+
+  bool loading = false;
   // Combination of header + vplan:
   List<dynamic> combination = [];
   List<dynamic> header = [
@@ -49,27 +134,59 @@ class _MyHomePageState extends State<MyHomePage> {
     // "Datum",
     // "ID"
   ];
+  dynamic headerNames;
   List<dynamic> vplan;
   dynamic lastKurs;
   Color lastKursColor;
 
   void init() {
+    setState(() => {
+          this.loading = true,
+        });
     this.combination = [];
     this.vplan = [];
     this.lastKurs = "";
     this.lastKursColor = null;
-    dynamic headerNames = {};
-    this.header.forEach((key) => {headerNames[key] = key});
+    this.fillHeaderNames();
     var response = http.get(Uri.https('api.zlyfer.net', 'vplan/latest'));
     // var response = http.get(Uri.http('192.168.0.122', 'vplan/latest'));
     response.then((data) {
       var entriesJSON = jsonDecode(data.body)['entries'];
       this.vplan.addAll(List.from(entriesJSON));
       setState(() {
-        this.combination.add(headerNames);
+        this.combination.add(this.headerNames);
         this.combination.addAll(this.vplan);
+        this.loading = false;
       });
-    });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Laden erfolgreich'),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(milliseconds: 1500),
+        action: SnackBarAction(
+          textColor: Colors.white,
+          label: 'Okay',
+          onPressed: () {},
+        ),
+      ));
+    }).catchError((error) => {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Fehler beim Laden'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(milliseconds: 2500),
+            action: SnackBarAction(
+              textColor: Colors.white,
+              label: 'Okay',
+              onPressed: () {},
+            ),
+          )),
+        });
+  }
+
+  void fillHeaderNames() {
+    this.headerNames = {};
+    this.header.forEach((key) => {this.headerNames[key] = key});
   }
 
   bool isDarkMode(context) {
@@ -148,92 +265,87 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    this.init();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.title,
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Row(
-          children: <Widget>[
-            Column(
-              children: <Widget>[
-                for (var entry in this.combination)
-                  Row(
+      appBar: searchBar.build(context),
+      body: this.loading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: <Widget>[
+                  CircularProgressIndicator(),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              child: Row(
+                children: <Widget>[
+                  Column(
                     children: <Widget>[
-                      Center(
-                        child: Container(
-                          height: 50,
-                          width: this.getColumnWidth("Kurs"),
-                          alignment: Alignment.center,
-                          color: this.getKursColor(entry["Kurs"], context),
-                          padding: const EdgeInsets.all(8),
-                          child: Text(
-                            entry["Kurs"],
-                            style: TextStyle(
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-              ],
-            ),
-            Flexible(
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    for (var entry in this.combination)
-                      Row(
-                        children: <Widget>[
-                          for (var key in this.header)
-                            if (key != "Kurs")
-                              Center(
-                                child: Container(
-                                  height: 50,
-                                  width: this.getColumnWidth(key),
-                                  alignment: Alignment.center,
-                                  color: this.getCellBackgroundColor(
-                                      entry, key, context),
-                                  padding: const EdgeInsets.all(8),
-                                  child: Text(
-                                    entry[key] == "N/A"
-                                        ? "Keine Information"
-                                        : entry[key],
-                                    style: TextStyle(
-                                        color: this.getCellForegroundColor(
-                                            entry, key, context),
-                                        fontStyle: entry[key] == "N/A"
-                                            ? FontStyle.italic
-                                            : null),
+                      for (var entry in this.combination)
+                        Row(
+                          children: <Widget>[
+                            Center(
+                              child: Container(
+                                height: 50,
+                                width: this.getColumnWidth("Kurs"),
+                                alignment: Alignment.center,
+                                color: this.getKursColor(entry["Kurs"], context),
+                                padding: const EdgeInsets.all(8),
+                                child: Text(
+                                  entry["Kurs"],
+                                  style: const TextStyle(
+                                    color: Colors.white,
                                   ),
                                 ),
                               ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          for (var entry in this.combination)
+                            Row(
+                              children: <Widget>[
+                                for (var key in this.header)
+                                  if (key != "Kurs")
+                                    Center(
+                                      child: Container(
+                                        height: 50,
+                                        width: this.getColumnWidth(key),
+                                        alignment: Alignment.center,
+                                        color: this.getCellBackgroundColor(entry, key, context),
+                                        padding: const EdgeInsets.all(8),
+                                        child: Text(
+                                          entry[key] == "N/A" ? "Keine Information" : entry[key],
+                                          style: TextStyle(
+                                              color:
+                                                  this.getCellForegroundColor(entry, key, context),
+                                              fontStyle:
+                                                  entry[key] == "N/A" ? FontStyle.italic : null),
+                                        ),
+                                      ),
+                                    ),
+                              ],
+                            ),
                         ],
                       ),
-                  ],
-                ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: this.init,
-        tooltip: 'Aktualisieren',
-        child: Icon(Icons.refresh),
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: this.init,
+      //   tooltip: 'Aktualisieren',
+      //   child: Icon(Icons.refresh),
+      // ),
     );
   }
 }
