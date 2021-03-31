@@ -14,11 +14,13 @@ class MyApp extends StatelessWidget {
       title: 'Vertretungsplan',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        canvasColor: Colors.white,
         textTheme: Typography.material2018().black,
         scaffoldBackgroundColor: Colors.white,
       ),
       darkTheme: ThemeData(
           primarySwatch: Colors.blue,
+          canvasColor: Colors.black,
           textTheme: Typography.material2018().white,
           scaffoldBackgroundColor: Colors.black),
       home: MyHomePage(title: 'Vertretungsplan'),
@@ -49,7 +51,7 @@ class Vertretungsplan extends State<MyHomePage> {
       title: Text(
         widget.title,
       ),
-      leading: IconButton(onPressed: () {}, icon: const Icon(Icons.menu)),
+      // leading: IconButton(onPressed: () {}, icon: const Icon(Icons.menu)),
       actions: <Widget>[
         searchBar.getSearchAction(context),
         IconButton(
@@ -88,6 +90,9 @@ class Vertretungsplan extends State<MyHomePage> {
     searchBar = new SearchBar(
         inBar: true,
         setState: setState,
+        onCleared: () {
+          this.search("");
+        },
         onSubmitted: (searchText) {
           this.search(searchText);
         },
@@ -104,18 +109,20 @@ class Vertretungsplan extends State<MyHomePage> {
       this.combination.add(this.headerNames);
       if (searchText == "")
         this.combination.addAll(this.vplan);
-      else
+      else {
+        searchText = searchText.toLowerCase();
         this.combination.addAll(this
             .vplan
-            .where((e) => (e["Kurs"].contains(searchText) ||
-                e["Wochentag"].contains(searchText) ||
-                e["Stunde"].contains(searchText) ||
-                e["Fach"].contains(searchText) ||
-                e["Lehrer"].contains(searchText) ||
-                e["Raum"].contains(searchText) ||
-                e["Info"].contains(searchText) ||
-                e["Vertretungstext"].contains(searchText)))
+            .where((e) => (e["Kurs"].toLowerCase().contains(searchText) ||
+                e["Wochentag"].toLowerCase().contains(searchText) ||
+                e["Stunde"].toLowerCase().contains(searchText) ||
+                e["Fach"].toLowerCase().contains(searchText) ||
+                e["Lehrer"].toLowerCase().contains(searchText) ||
+                e["Raum"].toLowerCase().contains(searchText) ||
+                e["Info"].toLowerCase().contains(searchText) ||
+                e["Vertretungstext"].toLowerCase().contains(searchText)))
             .toList());
+      }
     });
   }
 
@@ -124,13 +131,13 @@ class Vertretungsplan extends State<MyHomePage> {
   List<dynamic> combination = [];
   List<dynamic> header = [
     "Kurs",
-    "Wochentag",
-    "Stunde",
     "Fach",
+    "Stunde",
+    "Info",
     "Lehrer",
     "Raum",
-    "Info",
     "Vertretungstext",
+    "Wochentag",
     // "Datum",
     // "ID"
   ];
@@ -138,11 +145,23 @@ class Vertretungsplan extends State<MyHomePage> {
   List<dynamic> vplan;
   dynamic lastKurs;
   Color lastKursColor;
+  List<dynamic> drawerList = [
+    {
+      "leading": Icons.table_chart,
+      "title": Text('Vertretungsplan'),
+      "onTap": () {
+        print("hi");
+      },
+    },
+  ];
+  int selectedDay = 0;
+  String firstDay = "Leer";
+  String secondDay = "Leer";
 
   void init() {
-    setState(() => {
-          this.loading = true,
-        });
+    setState(() {
+      this.loading = true;
+    });
     this.combination = [];
     this.vplan = [];
     this.lastKurs = "";
@@ -153,6 +172,26 @@ class Vertretungsplan extends State<MyHomePage> {
     response.then((data) {
       var entriesJSON = jsonDecode(data.body)['entries'];
       this.vplan.addAll(List.from(entriesJSON));
+      // Test Start
+      // List<dynamic> testDay = jsonDecode(jsonEncode(this.vplan));
+      // testDay.forEach((e) {
+      //   e["Wochentag"] = "Samstag";
+      // });
+      // this.vplan.addAll(testDay);
+      // Test End
+      String tmpDay = "";
+      this.vplan.forEach((element) {
+        if (tmpDay == "") {
+          tmpDay = element["Wochentag"];
+          setState(() {
+            this.firstDay = tmpDay;
+          });
+        } else if (tmpDay != element["Wochentag"]) {
+          setState(() {
+            this.secondDay = element["Wochentag"];
+          });
+        }
+      });
       setState(() {
         this.combination.add(this.headerNames);
         this.combination.addAll(this.vplan);
@@ -169,24 +208,29 @@ class Vertretungsplan extends State<MyHomePage> {
           onPressed: () {},
         ),
       ));
-    }).catchError((error) => {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Fehler beim Laden'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            duration: Duration(milliseconds: 2500),
-            action: SnackBarAction(
-              textColor: Colors.white,
-              label: 'Okay',
-              onPressed: () {},
-            ),
-          )),
-        });
+    }).catchError((error) {
+      setState(() {
+        this.loading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Fehler beim Laden'),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        duration: Duration(milliseconds: 2500),
+        action: SnackBarAction(
+          textColor: Colors.white,
+          label: 'Okay',
+          onPressed: () {},
+        ),
+      ));
+    });
   }
 
   void fillHeaderNames() {
     this.headerNames = {};
-    this.header.forEach((key) => {this.headerNames[key] = key});
+    this.header.forEach((key) {
+      this.headerNames[key] = key;
+    });
   }
 
   bool isDarkMode(context) {
@@ -268,6 +312,35 @@ class Vertretungsplan extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: searchBar.build(context),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            DrawerHeader(
+              curve: Curves.fastOutSlowIn,
+              decoration: BoxDecoration(
+                color: Colors.blue,
+              ),
+              child: Text(
+                'Vertretungsplan',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                ),
+              ),
+            ),
+            for (var entry in this.drawerList)
+              ListTileTheme(
+                iconColor: Colors.grey,
+                child: ListTile(
+                  leading: Icon(entry["leading"]),
+                  title: entry["title"],
+                  onTap: entry["onTap"],
+                ),
+              ),
+          ],
+        ),
+      ),
       body: this.loading
           ? Center(
               child: Column(
@@ -282,7 +355,9 @@ class Vertretungsplan extends State<MyHomePage> {
                 children: <Widget>[
                   Column(
                     children: <Widget>[
-                      for (var entry in this.combination)
+                      for (var entry in this.combination.where((element) => this.selectedDay == 0
+                          ? element["Wochentag"] == this.firstDay
+                          : element["Wochentag"] == this.secondDay))
                         Row(
                           children: <Widget>[
                             Center(
@@ -294,9 +369,7 @@ class Vertretungsplan extends State<MyHomePage> {
                                 padding: const EdgeInsets.all(8),
                                 child: Text(
                                   entry["Kurs"],
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                  ),
+                                  style: const TextStyle(color: Colors.white),
                                 ),
                               ),
                             ),
@@ -310,7 +383,10 @@ class Vertretungsplan extends State<MyHomePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          for (var entry in this.combination)
+                          for (var entry in this.combination.where((element) =>
+                              this.selectedDay == 0
+                                  ? element["Wochentag"] == this.firstDay
+                                  : element["Wochentag"] == this.secondDay))
                             Row(
                               children: <Widget>[
                                 for (var key in this.header)
@@ -341,11 +417,26 @@ class Vertretungsplan extends State<MyHomePage> {
                 ],
               ),
             ),
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: this.init,
-      //   tooltip: 'Aktualisieren',
-      //   child: Icon(Icons.refresh),
-      // ),
+      bottomNavigationBar: BottomNavigationBar(
+        unselectedItemColor: this.isDarkMode(context) ? Colors.white : Colors.grey.shade700,
+        elevation: 16,
+        currentIndex: this.selectedDay,
+        onTap: (day) {
+          setState(() {
+            this.selectedDay = day;
+          });
+        },
+        items: <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: this.firstDay,
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: this.secondDay,
+          ),
+        ],
+      ),
     );
   }
 }
