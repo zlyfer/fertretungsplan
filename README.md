@@ -1,16 +1,23 @@
 # fertretungsplan
 
-A new Flutter project.
+\(**German** language\)
 
-## Getting Started
+Vertretungsplan geschrieben in [Flutter](https://flutter.dev/).
 
-This project is a starting point for a Flutter application.
+## Dependencies installieren
 
-A few resources to get you started if this is your first Flutter project:
+`flutter pub get`
 
-- [Lab: Write your first Flutter app](https://flutter.dev/docs/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://flutter.dev/docs/cookbook)
+## Starten in Android mit Hot-Reload
 
-For help getting started with Flutter, view our
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+`flutter run`
+
+## Starten in Windows 10 mit Hot-Reload
+
+`flutter run -d windows`
+
+## APK für Android kompilieren
+
+`flutter build apk`
+
+APK Pfad: /build/app/outputs/flutter-apk/apk-release.apk
