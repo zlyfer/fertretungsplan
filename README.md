@@ -4,6 +4,10 @@
 
 Vertretungsplan geschrieben in [Flutter](https://flutter.dev/).
 
+## Screenshots
+
+Screenshots gibts hier: [Screenshots](./SCREENSHOTS.md)
+
 ## Dependencies installieren
 
 `flutter pub get`
