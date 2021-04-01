@@ -129,6 +129,7 @@ class Vertretungsplan extends State<MyHomePage> {
   bool loading = false;
   // Combination of header + vplan:
   List<dynamic> combination = [];
+  // TODO: Option to make the order customizable:
   List<dynamic> header = [
     "Kurs",
     "Fach",
@@ -308,6 +309,18 @@ class Vertretungsplan extends State<MyHomePage> {
       return this.isDarkMode(context) ? Colors.white : Colors.grey.shade600;
   }
 
+  List<dynamic> getCombinedFiltered() {
+    // TODO: Option to only filter per Day:
+    return this
+        .combination
+        .where((element) =>
+            (this.selectedDay == 0
+                ? element["Wochentag"] == this.firstDay
+                : element["Wochentag"] == this.secondDay) ||
+            element["Wochentag"] == "Wochentag")
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -355,16 +368,15 @@ class Vertretungsplan extends State<MyHomePage> {
                 children: <Widget>[
                   Column(
                     children: <Widget>[
-                      for (var entry in this.combination.where((element) => this.selectedDay == 0
-                          ? element["Wochentag"] == this.firstDay
-                          : element["Wochentag"] == this.secondDay))
+                      for (var entry in this.getCombinedFiltered())
                         Row(
                           children: <Widget>[
                             Center(
                               child: Container(
                                 height: 50,
-                                width: this.getColumnWidth("Kurs"),
                                 alignment: Alignment.center,
+                                // TODO: Option to use a different column instead:
+                                width: this.getColumnWidth("Kurs"),
                                 color: this.getKursColor(entry["Kurs"], context),
                                 padding: const EdgeInsets.all(8),
                                 child: Text(
@@ -383,10 +395,7 @@ class Vertretungsplan extends State<MyHomePage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          for (var entry in this.combination.where((element) =>
-                              this.selectedDay == 0
-                                  ? element["Wochentag"] == this.firstDay
-                                  : element["Wochentag"] == this.secondDay))
+                          for (var entry in this.getCombinedFiltered())
                             Row(
                               children: <Widget>[
                                 for (var key in this.header)
