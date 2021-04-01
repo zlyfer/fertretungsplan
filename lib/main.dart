@@ -325,35 +325,35 @@ class Vertretungsplan extends State<MyHomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: searchBar.build(context),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            DrawerHeader(
-              curve: Curves.fastOutSlowIn,
-              decoration: BoxDecoration(
-                color: Colors.blue,
-              ),
-              child: Text(
-                'Vertretungsplan',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                ),
-              ),
-            ),
-            for (var entry in this.drawerList)
-              ListTileTheme(
-                iconColor: Colors.grey,
-                child: ListTile(
-                  leading: Icon(entry["leading"]),
-                  title: entry["title"],
-                  onTap: entry["onTap"],
-                ),
-              ),
-          ],
-        ),
-      ),
+      // drawer: Drawer(
+      //   child: ListView(
+      //     padding: EdgeInsets.zero,
+      //     children: <Widget>[
+      //       DrawerHeader(
+      //         curve: Curves.fastOutSlowIn,
+      //         decoration: BoxDecoration(
+      //           color: Colors.blue,
+      //         ),
+      //         child: Text(
+      //           'Vertretungsplan',
+      //           style: TextStyle(
+      //             color: Colors.white,
+      //             fontSize: 24,
+      //           ),
+      //         ),
+      //       ),
+      //       for (var entry in this.drawerList)
+      //         ListTileTheme(
+      //           iconColor: Colors.grey,
+      //           child: ListTile(
+      //             leading: Icon(entry["leading"]),
+      //             title: entry["title"],
+      //             onTap: entry["onTap"],
+      //           ),
+      //         ),
+      //     ],
+      //   ),
+      // ),
       body: this.loading
           ? Center(
               child: Column(
