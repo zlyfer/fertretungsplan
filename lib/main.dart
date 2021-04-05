@@ -57,7 +57,7 @@ class FPlanState extends State<FPlan> {
         searchBar.getSearchAction(context),
         IconButton(
             onPressed: () {
-              this.init();
+              this.init(context: context);
             },
             icon: const Icon(Icons.refresh)),
       ],
@@ -65,7 +65,6 @@ class FPlanState extends State<FPlan> {
   }
 
   FPlanState() {
-    print("hi");
     this.searchBar = new SearchBar(
         inBar: true,
         setState: setState,
@@ -128,7 +127,7 @@ class FPlanState extends State<FPlan> {
     super.initState();
   }
 
-  Future init() {
+  void init({context}) {
     setState(() {
       this.loading = true;
     });
@@ -242,7 +241,7 @@ class FPlanState extends State<FPlan> {
     }
   }
 
-  Color getKursColor(var kursName, var context) {
+  Color getKursColor(var kursName) {
     Color even = this.primary;
     Color odd = this.secondary;
     if (kursName == "Kurs") {
@@ -257,7 +256,7 @@ class FPlanState extends State<FPlan> {
       return this.lastKursColor;
   }
 
-  Color getCellBackgroundColor(var entry, var key, var context) {
+  Color getCellBackgroundColor(var entry, var key) {
     if (this.combination.indexOf(entry) == 0)
       return this.primary;
     else if (entry[key] == "Entfall")
@@ -266,7 +265,7 @@ class FPlanState extends State<FPlan> {
       return null;
   }
 
-  Color getCellForegroundColor(var entry, var key, var context) {
+  Color getCellForegroundColor(var entry, var key) {
     if (this.header.contains(entry[key]))
       return Colors.white;
     else if (entry[key] == "Entfall")
@@ -417,7 +416,7 @@ class FPlanState extends State<FPlan> {
                                         alignment: Alignment.center,
                                         // TODO: Option to use a different column instead:
                                         width: this.getColumnWidth("Kurs"),
-                                        color: this.getKursColor(entry["Kurs"], context),
+                                        color: this.getKursColor(entry["Kurs"]),
                                         padding: const EdgeInsets.all(8),
                                         child: Text(
                                           entry["Kurs"],
@@ -445,16 +444,15 @@ class FPlanState extends State<FPlan> {
                                                 height: 50,
                                                 width: this.getColumnWidth(key),
                                                 alignment: Alignment.center,
-                                                color: this
-                                                    .getCellBackgroundColor(entry, key, context),
+                                                color: this.getCellBackgroundColor(entry, key),
                                                 padding: const EdgeInsets.all(8),
                                                 child: Text(
                                                   entry[key] == "N/A"
                                                       ? "Keine Information"
                                                       : entry[key],
                                                   style: TextStyle(
-                                                      color: this.getCellForegroundColor(
-                                                          entry, key, context),
+                                                      color:
+                                                          this.getCellForegroundColor(entry, key),
                                                       fontStyle: entry[key] == "N/A"
                                                           ? FontStyle.italic
                                                           : null),
