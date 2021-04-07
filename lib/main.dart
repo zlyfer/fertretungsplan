@@ -577,33 +577,36 @@ class FPlanState extends State<FPlan> {
                         showDialog(
                           context: context,
                           builder: (_) => AlertDialog(
+                            backgroundColor: this.secondary,
                             contentPadding: EdgeInsets.all(6.0),
-                            title: Text("App Farbe"),
+                            scrollable: false,
+                            title: Text("App Farbe",
+                                style: TextStyle(color: this.getTextColor(color: this.secondary))),
                             content: Container(
                               width: 100,
-                              height: (Colors.primaries.length / 5 * 45).roundToDouble(),
+                              height: (Colors.primaries.length / 6 * 50).roundToDouble(),
                               child: GridView.count(
-                                crossAxisCount: Colors.primaries.length ~/ 3,
+                                crossAxisCount: 6,
                                 childAspectRatio: 1,
                                 crossAxisSpacing: 0,
-                                padding: EdgeInsets.all(15),
+                                padding: EdgeInsets.all(8),
                                 children: [
                                   for (var i = 0; i < Colors.primaries.length; i++)
-                                    GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          this.primary = Colors.primaries[i];
-                                          this.computeSecondary(Colors.primaries[i]);
-                                        });
-                                        setAPInt("primary", i);
-                                        Navigator.pop(context);
-                                      },
-                                      child: Material(
-                                        shape: CircleBorder(),
-                                        elevation: 5,
-                                        child: CircleAvatar(
-                                          backgroundColor: Colors.primaries[i],
-                                          radius: 0.5,
+                                    Container(
+                                      padding: EdgeInsets.all(4),
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            this.primary = Colors.primaries[i];
+                                            this.computeSecondary(Colors.primaries[i]);
+                                          });
+                                          setAPInt("primary", i);
+                                          Navigator.pop(context);
+                                        },
+                                        child: Material(
+                                          shape: CircleBorder(),
+                                          elevation: 2,
+                                          color: Colors.primaries[i],
                                           child: this.primary == Colors.primaries[i]
                                               ? Icon(Icons.check,
                                                   color:
@@ -611,7 +614,7 @@ class FPlanState extends State<FPlan> {
                                               : null,
                                         ),
                                       ),
-                                    ),
+                                    )
                                 ],
                               ),
                             ),
