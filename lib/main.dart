@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -41,15 +42,12 @@ class FPlanState extends State<FPlan> {
   String secondDay = "Leer";
   bool autoDarkMode = false;
   bool manualDarkMode = true;
-  // TODO: Make black theme black only but with option for blue color.
-  // TODO: Make accent color choosable from a palette:
-  // Colors.black;
-  Color primary = Colors.blue;
-  // Colors.grey.shade900;
+  Color primary;
   Color secondary = Colors.blue.shade400;
 
   AppBar buildAppBar(BuildContext context) {
     return new AppBar(
+      backgroundColor: this.primary,
       title: Text(
         "Vertretungsplan",
       ),
@@ -113,11 +111,26 @@ class FPlanState extends State<FPlan> {
     this.autoDarkMode =
         appPrefs.containsKey("autoDarkMode") ? appPrefs.getBool("autoDarkMode") : false;
     appPrefs.setBool("autoDarkMode", this.autoDarkMode);
+    if (appPrefs.containsKey("primary")) {
+      this.primary = Colors.primaries[appPrefs.getInt("primary")];
+    } else
+      this.primary = Colors.blue;
+    this.computeSecondary(this.primary);
   }
 
   setAPBool(String key, bool value) async {
     SharedPreferences appPrefs = await SharedPreferences.getInstance();
     appPrefs.setBool(key, value);
+  }
+
+  setAPString(String key, String value) async {
+    SharedPreferences appPrefs = await SharedPreferences.getInstance();
+    appPrefs.setString(key, value);
+  }
+
+  setAPInt(String key, int value) async {
+    SharedPreferences appPrefs = await SharedPreferences.getInstance();
+    appPrefs.setInt(key, value);
   }
 
   @override
@@ -168,7 +181,7 @@ class FPlanState extends State<FPlan> {
         this.loading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Laden erfolgreich'),
+        content: Text('Laden erfolgreich', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
         duration: Duration(milliseconds: 1500),
@@ -183,7 +196,7 @@ class FPlanState extends State<FPlan> {
         this.loading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Fehler beim Laden'),
+        content: Text('Fehler beim Laden', style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.red,
         behavior: SnackBarBehavior.floating,
         duration: Duration(milliseconds: 2500),
@@ -194,6 +207,12 @@ class FPlanState extends State<FPlan> {
         ),
       ));
     });
+  }
+
+  computeSecondary(color) {
+    double div = 1.2;
+    this.secondary =
+        color.withRed(color.red ~/ div).withGreen(color.green ~/ div).withBlue(color.blue ~/ div);
   }
 
   void fillHeaderNames() {
@@ -245,7 +264,7 @@ class FPlanState extends State<FPlan> {
     Color even = this.primary;
     Color odd = this.secondary;
     if (kursName == "Kurs") {
-      this.lastKursColor = this.lastKursColor == even ? odd : even;
+      this.lastKursColor = even;
       return even;
     }
     if (this.lastKurs != kursName) {
@@ -256,22 +275,20 @@ class FPlanState extends State<FPlan> {
       return this.lastKursColor;
   }
 
-  Color getCellBackgroundColor(var entry, var key) {
+  Color getCellBackgroundColor(var entry, var key, var context) {
     if (this.combination.indexOf(entry) == 0)
       return this.primary;
     else if (entry[key] == "Entfall")
       return Colors.red.shade400;
     else
-      return null;
+      return this.isDarkMode(context) ? Colors.black : Colors.white;
   }
 
-  Color getCellForegroundColor(var entry, var key) {
-    if (this.header.contains(entry[key]))
-      return Colors.white;
-    else if (entry[key] == "Entfall")
-      return Colors.white;
+  Color getTextColor({Color color}) {
+    if (color != null)
+      return color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
     else
-      return null;
+      return this.primary.computeLuminance() > 0.5 ? Colors.black : Colors.white;
   }
 
   List<dynamic> getCombinedFiltered() {
@@ -314,23 +331,25 @@ class FPlanState extends State<FPlan> {
               ? ThemeMode.dark
               : ThemeMode.light,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        primarySwatch: this.primary,
         canvasColor: Colors.white,
         textTheme: Typography.material2018().black,
         brightness: Brightness.light,
         scaffoldBackgroundColor: Colors.white,
       ),
       darkTheme: ThemeData(
-          primarySwatch: Colors.blue,
-          canvasColor: Colors.black,
-          textTheme: Typography.material2018().white,
-          brightness: Brightness.dark,
-          scaffoldBackgroundColor: Colors.black),
+        primarySwatch: this.primary,
+        canvasColor: Colors.black,
+        textTheme: Typography.material2018().white,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: Colors.black,
+      ),
       home: Builder(
         builder: (context) => Scaffold(
           appBar: this.showView == "vplan"
               ? this.searchBar.build(context)
               : AppBar(
+                  backgroundColor: this.primary,
                   title: Text(
                     this.viewTranslator[this.showView]["appBarTitle"],
                   ),
@@ -343,12 +362,12 @@ class FPlanState extends State<FPlan> {
                   margin: EdgeInsets.zero,
                   curve: Curves.fastOutSlowIn,
                   decoration: BoxDecoration(
-                    color: Colors.blue,
+                    color: this.primary,
                   ),
                   child: Text(
                     "Fertretungsplan",
                     style: TextStyle(
-                      color: Colors.white,
+                      color: this.getTextColor(),
                       fontSize: 24,
                     ),
                   ),
@@ -357,10 +376,10 @@ class FPlanState extends State<FPlan> {
                   child: ListTile(
                     leading: Icon(
                       Icons.table_chart,
-                      color: this.showView == "vplan" ? Colors.blue : Colors.grey,
+                      color: this.showView == "vplan" ? this.secondary : Colors.grey,
                     ),
                     title: Text("Vertretungsplan",
-                        style: TextStyle(color: this.showView == "vplan" ? Colors.blue : null)),
+                        style: TextStyle(color: this.showView == "vplan" ? this.secondary : null)),
                     onTap: () {
                       setState(() {
                         this.showView = "vplan";
@@ -369,39 +388,28 @@ class FPlanState extends State<FPlan> {
                     },
                   ),
                 ),
-                Align(
-                  alignment: Alignment.bottomCenter,
-                  child: ListTileTheme(
-                    child: ListTile(
-                      leading: Icon(
-                        Icons.settings,
-                        color: this.showView == "settings" ? Colors.blue : Colors.grey,
-                      ),
-                      title: Text("Einstellungen",
-                          style:
-                              TextStyle(color: this.showView == "settings" ? Colors.blue : null)),
-                      onTap: () {
-                        setState(() {
-                          this.showView = "settings";
-                        });
-                        Navigator.pop(context);
-                      },
+                ListTileTheme(
+                  child: ListTile(
+                    leading: Icon(
+                      Icons.settings,
+                      color: this.showView == "settings" ? this.secondary : Colors.grey,
                     ),
+                    title: Text("Einstellungen",
+                        style:
+                            TextStyle(color: this.showView == "settings" ? this.secondary : null)),
+                    onTap: () {
+                      setState(() {
+                        this.showView = "settings";
+                      });
+                      Navigator.pop(context);
+                    },
                   ),
                 ),
               ],
             ),
           ),
-          body: this.loading
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: <Widget>[
-                      CircularProgressIndicator(),
-                    ],
-                  ),
-                )
-              : this.showView == "vplan"
+          body: this.showView == "vplan"
+              ? !this.loading
                   ? SingleChildScrollView(
                       child: Row(
                         children: <Widget>[
@@ -420,7 +428,7 @@ class FPlanState extends State<FPlan> {
                                         padding: const EdgeInsets.all(8),
                                         child: Text(
                                           entry["Kurs"],
-                                          style: const TextStyle(color: Colors.white),
+                                          style: TextStyle(color: this.getTextColor()),
                                         ),
                                       ),
                                     ),
@@ -444,15 +452,17 @@ class FPlanState extends State<FPlan> {
                                                 height: 50,
                                                 width: this.getColumnWidth(key),
                                                 alignment: Alignment.center,
-                                                color: this.getCellBackgroundColor(entry, key),
+                                                color: this
+                                                    .getCellBackgroundColor(entry, key, context),
                                                 padding: const EdgeInsets.all(8),
                                                 child: Text(
                                                   entry[key] == "N/A"
                                                       ? "Keine Information"
                                                       : entry[key],
                                                   style: TextStyle(
-                                                      color:
-                                                          this.getCellForegroundColor(entry, key),
+                                                      color: this.getTextColor(
+                                                          color: this.getCellBackgroundColor(
+                                                              entry, key, context)),
                                                       fontStyle: entry[key] == "N/A"
                                                           ? FontStyle.italic
                                                           : null),
@@ -468,91 +478,160 @@ class FPlanState extends State<FPlan> {
                         ],
                       ),
                     )
-                  : ListView(
-                      children: [
-                        ListTile(
-                          title: Text(
-                            "Design",
-                            style: TextStyle(color: Colors.blue),
-                          ),
-                          dense: true,
-                        ),
-                        ListTile(
-                          leading: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                  : Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: <Widget>[
+                          CircularProgressIndicator(),
+                        ],
+                      ),
+                    )
+              : ListView(
+                  children: [
+                    ListTile(
+                      tileColor: this.secondary,
+                      title: Text(
+                        "Design",
+                        style: TextStyle(color: this.getTextColor()),
+                      ),
+                      dense: true,
+                    ),
+                    ListTile(
+                      leading: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(this.autoDarkMode
+                              ? Icons.brightness_auto
+                              : this.isDarkMode(context)
+                                  ? Icons.brightness_2
+                                  : Icons.brightness_high),
+                        ],
+                      ),
+                      title: Text("App Thema"),
+                      subtitle: Text(this.autoDarkMode
+                          ? "Automatisch"
+                          : this.isDarkMode(context)
+                              ? "Dunkel"
+                              : "Hell"),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => SimpleDialog(
+                            title: Text("App Thema"),
                             children: [
-                              Icon(this.autoDarkMode
-                                  ? Icons.brightness_auto
-                                  : this.isDarkMode(context)
-                                      ? Icons.brightness_2
-                                      : Icons.brightness_high),
+                              SimpleDialogOption(
+                                child: Text("Automatisch", style: TextStyle(fontSize: 16)),
+                                padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
+                                onPressed: () {
+                                  setState(() {
+                                    this.autoDarkMode = true;
+                                    // this.manualDarkMode = false;
+                                  });
+                                  this.setAPBool("autoDarkMode", true);
+                                  Navigator.pop(context);
+                                },
+                              ),
+                              SimpleDialogOption(
+                                child: Text("Hell", style: TextStyle(fontSize: 16)),
+                                padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
+                                onPressed: () {
+                                  setState(() {
+                                    this.autoDarkMode = false;
+                                    this.manualDarkMode = false;
+                                  });
+                                  this.setAPBool("autoDarkMode", false);
+                                  this.setAPBool("manualDarkMode", false);
+                                  Navigator.pop(context);
+                                },
+                              ),
+                              SimpleDialogOption(
+                                child: Text("Dunkel", style: TextStyle(fontSize: 16)),
+                                padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
+                                onPressed: () {
+                                  setState(() {
+                                    this.autoDarkMode = false;
+                                    this.manualDarkMode = true;
+                                  });
+                                  this.setAPBool("autoDarkMode", false);
+                                  this.setAPBool("manualDarkMode", true);
+                                  Navigator.pop(context);
+                                },
+                              ),
                             ],
                           ),
-                          title: Text("App Thema"),
-                          subtitle: Text(this.autoDarkMode
-                              ? "Automatisch"
-                              : this.isDarkMode(context)
-                                  ? "Dunkel"
-                                  : "Hell"),
-                          onTap: () {
-                            showDialog(
-                              context: context,
-                              builder: (_) => SimpleDialog(
-                                title: Text("App Thema"),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.brightness_1,
+                            color: this.primary,
+                          ),
+                        ],
+                      ),
+                      title: Text("App Farbe"),
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => AlertDialog(
+                            contentPadding: EdgeInsets.all(6.0),
+                            title: Text("App Farbe"),
+                            content: Container(
+                              width: 100,
+                              height: (Colors.primaries.length / 5 * 45).roundToDouble(),
+                              child: GridView.count(
+                                crossAxisCount: Colors.primaries.length ~/ 3,
+                                childAspectRatio: 1,
+                                crossAxisSpacing: 0,
+                                padding: EdgeInsets.all(15),
                                 children: [
-                                  SimpleDialogOption(
-                                    child: Text("Automatisch", style: TextStyle(fontSize: 16)),
-                                    padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
-                                    onPressed: () {
-                                      setState(() {
-                                        this.autoDarkMode = true;
-                                        // this.manualDarkMode = false;
-                                      });
-                                      this.setAPBool("autoDarkMode", true);
-                                      Navigator.pop(context);
-                                    },
-                                  ),
-                                  SimpleDialogOption(
-                                    child: Text("Hell", style: TextStyle(fontSize: 16)),
-                                    padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
-                                    onPressed: () {
-                                      setState(() {
-                                        this.autoDarkMode = false;
-                                        this.manualDarkMode = false;
-                                      });
-                                      this.setAPBool("autoDarkMode", false);
-                                      this.setAPBool("manualDarkMode", false);
-                                      Navigator.pop(context);
-                                    },
-                                  ),
-                                  SimpleDialogOption(
-                                    child: Text("Dunkel", style: TextStyle(fontSize: 16)),
-                                    padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
-                                    onPressed: () {
-                                      setState(() {
-                                        this.autoDarkMode = false;
-                                        this.manualDarkMode = true;
-                                      });
-                                      this.setAPBool("autoDarkMode", false);
-                                      this.setAPBool("manualDarkMode", true);
-                                      Navigator.pop(context);
-                                    },
-                                  ),
+                                  for (var i = 0; i < Colors.primaries.length; i++)
+                                    GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          this.primary = Colors.primaries[i];
+                                          this.computeSecondary(Colors.primaries[i]);
+                                        });
+                                        setAPInt("primary", i);
+                                        Navigator.pop(context);
+                                      },
+                                      child: Material(
+                                        shape: CircleBorder(),
+                                        elevation: 5,
+                                        child: CircleAvatar(
+                                          backgroundColor: Colors.primaries[i],
+                                          radius: 0.5,
+                                          child: this.primary == Colors.primaries[i]
+                                              ? Icon(Icons.check,
+                                                  color:
+                                                      this.getTextColor(color: Colors.primaries[i]))
+                                              : null,
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
-                            );
-                          },
-                        ),
-                        Divider(
-                          thickness: 2,
-                          indent: 18,
-                          endIndent: 18,
-                        )
-                      ],
+                            ),
+                          ),
+                        );
+                      },
                     ),
+                    Divider(
+                      thickness: 2,
+                      indent: 18,
+                      endIndent: 18,
+                      color: this.secondary,
+                    )
+                  ],
+                ),
           bottomNavigationBar: this.showView == "vplan"
               ? BottomNavigationBar(
-                  selectedItemColor: Colors.blue,
+                  selectedItemColor: this.getTextColor(),
+                  unselectedItemColor: this.getTextColor().withOpacity(0.5),
+                  backgroundColor: this.secondary,
                   elevation: 16,
                   currentIndex: this.selectedDay,
                   onTap: (day) {
