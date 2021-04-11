@@ -17,9 +17,10 @@ class FPlan extends StatefulWidget {
 class FPlanState extends State<FPlan> {
   // vplan settings
   String showView = "vplan";
-  SearchBar searchBar;
   bool loading = false;
   List<dynamic> combination = [];
+  SearchBar searchBar;
+  String searchText = "";
   // TODO: Option to make the order customizable:
   List<dynamic> header = [
     "Kurs",
@@ -45,12 +46,38 @@ class FPlanState extends State<FPlan> {
   Color primary;
   Color secondary = Colors.blue.shade400;
 
+  FPlanState() {
+    this.searchBar = new SearchBar(
+        inBar: true,
+        setState: setState,
+        controller: TextEditingController(text: this.searchText),
+        closeOnSubmit: true,
+        clearOnSubmit: false,
+        onCleared: () {
+          this.search("");
+          setState(() => {this.searchText = ""});
+        },
+        onSubmitted: (searchText) {
+          setState(() => {this.searchText = searchText});
+          this.search(searchText);
+        },
+        onChanged: (searchText) {
+          setState(() => {this.searchText = searchText});
+          this.search(searchText);
+        },
+        buildDefaultAppBar: buildAppBar,
+        hintText: "Suche..");
+  }
+
   AppBar buildAppBar(BuildContext context) {
     return new AppBar(
+      elevation: 0,
       backgroundColor: this.primary,
       title: Text(
-        "Vertretungsplan",
+        this.viewTranslator[this.showView]["appBarTitle"],
+        style: TextStyle(color: Colors.white),
       ),
+      iconTheme: IconThemeData(color: this.getTextColor()),
       actions: <Widget>[
         searchBar.getSearchAction(context),
         IconButton(
@@ -60,23 +87,6 @@ class FPlanState extends State<FPlan> {
             icon: const Icon(Icons.refresh)),
       ],
     );
-  }
-
-  FPlanState() {
-    this.searchBar = new SearchBar(
-        inBar: true,
-        setState: setState,
-        onCleared: () {
-          this.search("");
-        },
-        onSubmitted: (searchText) {
-          this.search(searchText);
-        },
-        onChanged: (searchText) {
-          this.search(searchText);
-        },
-        buildDefaultAppBar: buildAppBar,
-        hintText: "Suche..");
   }
 
   search(searchText) {
@@ -261,8 +271,8 @@ class FPlanState extends State<FPlan> {
   }
 
   Color getKursColor(var kursName) {
-    Color even = this.primary;
-    Color odd = this.secondary;
+    Color odd = this.primary;
+    Color even = this.secondary;
     if (kursName == "Kurs") {
       this.lastKursColor = even;
       return even;
@@ -277,7 +287,7 @@ class FPlanState extends State<FPlan> {
 
   Color getCellBackgroundColor(var entry, var key, var context) {
     if (this.combination.indexOf(entry) == 0)
-      return this.primary;
+      return this.secondary;
     else if (entry[key] == "Entfall")
       return Colors.red.shade400;
     else
@@ -349,9 +359,12 @@ class FPlanState extends State<FPlan> {
           appBar: this.showView == "vplan"
               ? this.searchBar.build(context)
               : AppBar(
-                  backgroundColor: this.primary,
+                  elevation: 0,
+                  iconTheme: IconThemeData(color: this.primary),
+                  backgroundColor: this.isDarkMode(context) ? Colors.black : Colors.white,
                   title: Text(
                     this.viewTranslator[this.showView]["appBarTitle"],
+                    style: TextStyle(color: this.primary),
                   ),
                 ),
           drawer: Drawer(
@@ -428,7 +441,9 @@ class FPlanState extends State<FPlan> {
                                         padding: const EdgeInsets.all(8),
                                         child: Text(
                                           entry["Kurs"],
-                                          style: TextStyle(color: this.getTextColor()),
+                                          style: TextStyle(
+                                              color: this.getTextColor(
+                                                  color: this.getKursColor(entry["Kurs"]))),
                                         ),
                                       ),
                                     ),
@@ -489,145 +504,201 @@ class FPlanState extends State<FPlan> {
               : ListView(
                   children: [
                     ListTile(
-                      tileColor: this.secondary,
                       title: Text(
                         "Design",
-                        style: TextStyle(color: this.getTextColor()),
+                        style: TextStyle(color: this.secondary, fontWeight: FontWeight.bold),
                       ),
                       dense: true,
                     ),
-                    ListTile(
-                      leading: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(this.autoDarkMode
-                              ? Icons.brightness_auto
-                              : this.isDarkMode(context)
-                                  ? Icons.brightness_2
-                                  : Icons.brightness_high),
-                        ],
+                    Card(
+                      margin: EdgeInsets.all(15.0),
+                      color: this.isDarkMode(context) ? Colors.black : Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        side: BorderSide(color: this.secondary, width: 1),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      title: Text("App Thema"),
-                      subtitle: Text(this.autoDarkMode
-                          ? "Automatisch"
-                          : this.isDarkMode(context)
-                              ? "Dunkel"
-                              : "Hell"),
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) => SimpleDialog(
-                            title: Text("App Thema"),
-                            children: [
-                              SimpleDialogOption(
-                                child: Text("Automatisch", style: TextStyle(fontSize: 16)),
-                                padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
-                                onPressed: () {
-                                  setState(() {
-                                    this.autoDarkMode = true;
-                                    // this.manualDarkMode = false;
-                                  });
-                                  this.setAPBool("autoDarkMode", true);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              SimpleDialogOption(
-                                child: Text("Hell", style: TextStyle(fontSize: 16)),
-                                padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
-                                onPressed: () {
-                                  setState(() {
-                                    this.autoDarkMode = false;
-                                    this.manualDarkMode = false;
-                                  });
-                                  this.setAPBool("autoDarkMode", false);
-                                  this.setAPBool("manualDarkMode", false);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              SimpleDialogOption(
-                                child: Text("Dunkel", style: TextStyle(fontSize: 16)),
-                                padding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
-                                onPressed: () {
-                                  setState(() {
-                                    this.autoDarkMode = false;
-                                    this.manualDarkMode = true;
-                                  });
-                                  this.setAPBool("autoDarkMode", false);
-                                  this.setAPBool("manualDarkMode", true);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                    ListTile(
-                      leading: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      child: Column(
                         children: [
-                          Icon(
-                            Icons.brightness_1,
-                            color: this.primary,
-                          ),
-                        ],
-                      ),
-                      title: Text("App Farbe"),
-                      onTap: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) => AlertDialog(
-                            backgroundColor: this.secondary,
-                            contentPadding: EdgeInsets.all(6.0),
-                            scrollable: false,
-                            title: Text("App Farbe",
-                                style: TextStyle(color: this.getTextColor(color: this.secondary))),
-                            content: Container(
-                              width: 100,
-                              height: (Colors.primaries.length / 6 * 50).roundToDouble(),
-                              child: GridView.count(
-                                crossAxisCount: 6,
-                                childAspectRatio: 1,
-                                crossAxisSpacing: 0,
-                                padding: EdgeInsets.all(8),
-                                children: [
-                                  for (var i = 0; i < Colors.primaries.length; i++)
-                                    Container(
-                                      padding: EdgeInsets.all(4),
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          setState(() {
-                                            this.primary = Colors.primaries[i];
-                                            this.computeSecondary(Colors.primaries[i]);
-                                          });
-                                          setAPInt("primary", i);
-                                          Navigator.pop(context);
-                                        },
-                                        child: Material(
-                                          shape: CircleBorder(),
-                                          elevation: 2,
-                                          color: Colors.primaries[i],
-                                          child: this.primary == Colors.primaries[i]
-                                              ? Icon(Icons.check,
-                                                  color:
-                                                      this.getTextColor(color: Colors.primaries[i]))
-                                              : null,
-                                        ),
-                                      ),
-                                    )
-                                ],
+                          ListTile(
+                            leading: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(this.autoDarkMode
+                                    ? Icons.brightness_auto
+                                    : this.isDarkMode(context)
+                                        ? Icons.brightness_2
+                                        : Icons.brightness_high),
+                              ],
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(10),
+                                topRight: Radius.circular(10),
                               ),
                             ),
+                            title: Text("App Thema"),
+                            subtitle: Text(this.autoDarkMode
+                                ? "Automatisch"
+                                : this.isDarkMode(context)
+                                    ? "Dunkel"
+                                    : "Hell"),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => SimpleDialog(
+                                  backgroundColor: this.secondary,
+                                  contentPadding: EdgeInsets.all(6.0),
+                                  title: Text(
+                                    "App Thema",
+                                    style: TextStyle(
+                                      color: this.getTextColor(color: this.secondary),
+                                    ),
+                                  ),
+                                  children: [
+                                    SimpleDialogOption(
+                                      child: Text(
+                                        "Automatisch",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: this.getTextColor(color: this.secondary),
+                                        ),
+                                      ),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
+                                      onPressed: () {
+                                        setState(() {
+                                          this.autoDarkMode = true;
+                                          // this.manualDarkMode = false;
+                                        });
+                                        this.setAPBool("autoDarkMode", true);
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    SimpleDialogOption(
+                                      child: Text(
+                                        "Hell",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: this.getTextColor(color: this.secondary),
+                                        ),
+                                      ),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
+                                      onPressed: () {
+                                        setState(() {
+                                          this.autoDarkMode = false;
+                                          this.manualDarkMode = false;
+                                        });
+                                        this.setAPBool("autoDarkMode", false);
+                                        this.setAPBool("manualDarkMode", false);
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    SimpleDialogOption(
+                                      child: Text(
+                                        "Dunkel",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: this.getTextColor(color: this.secondary),
+                                        ),
+                                      ),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
+                                      onPressed: () {
+                                        setState(() {
+                                          this.autoDarkMode = false;
+                                          this.manualDarkMode = true;
+                                        });
+                                        this.setAPBool("autoDarkMode", false);
+                                        this.setAPBool("manualDarkMode", true);
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
                           ),
-                        );
-                      },
+                          Divider(
+                            color: this.secondary,
+                            indent: 15.0,
+                            endIndent: 15.0,
+                            height: 2.0,
+                          ),
+                          ListTile(
+                            leading: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.brightness_1,
+                                  color: this.primary,
+                                ),
+                              ],
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(10),
+                                bottomRight: Radius.circular(10),
+                              ),
+                            ),
+                            title: Text("App Farbe"),
+                            subtitle: Text("Accentfarbe der App"),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  backgroundColor: this.secondary,
+                                  contentPadding: EdgeInsets.all(6.0),
+                                  title: Text(
+                                    "App Farbe",
+                                    style: TextStyle(
+                                      color: this.getTextColor(color: this.secondary),
+                                    ),
+                                  ),
+                                  content: Container(
+                                    width: 100,
+                                    height: (Colors.primaries.length / 6 * 50).roundToDouble(),
+                                    child: GridView.count(
+                                      crossAxisCount: 6,
+                                      childAspectRatio: 1,
+                                      crossAxisSpacing: 0,
+                                      padding: EdgeInsets.all(8),
+                                      children: [
+                                        for (var i = 0; i < Colors.primaries.length; i++)
+                                          Container(
+                                            padding: EdgeInsets.all(4),
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  this.primary = Colors.primaries[i];
+                                                  this.computeSecondary(Colors.primaries[i]);
+                                                });
+                                                setAPInt("primary", i);
+                                                Navigator.pop(context);
+                                              },
+                                              child: Material(
+                                                shape: CircleBorder(),
+                                                elevation: 2,
+                                                color: Colors.primaries[i],
+                                                child: this.primary == Colors.primaries[i]
+                                                    ? Icon(Icons.check,
+                                                        color: this.getTextColor(
+                                                            color: Colors.primaries[i]))
+                                                    : null,
+                                              ),
+                                            ),
+                                          )
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                    Divider(
-                      thickness: 2,
-                      indent: 18,
-                      endIndent: 18,
-                      color: this.secondary,
-                    )
                   ],
                 ),
           bottomNavigationBar: this.showView == "vplan"
