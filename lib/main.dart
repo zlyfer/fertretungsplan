@@ -21,8 +21,8 @@ class FPlanState extends State<FPlan> {
   List<dynamic> combination = [];
   SearchBar searchBar;
   String searchText = "";
-  // TODO: Option to make the order customizable:
-  List<dynamic> header = [
+  List<String> header = [];
+  List<String> possibleHeader = [
     "Kurs",
     "Fach",
     "Stunde",
@@ -34,6 +34,7 @@ class FPlanState extends State<FPlan> {
     // "Datum",
     // "ID"
   ];
+  List<int> headerOrder = [];
   dynamic headerNames;
   List<dynamic> vplan;
   dynamic lastKurs;
@@ -45,46 +46,50 @@ class FPlanState extends State<FPlan> {
   bool manualDarkMode = true;
   Color primary;
   Color secondary = Colors.blue.shade400;
+  int fixedColumn;
 
   FPlanState() {
     this.searchBar = new SearchBar(
-        inBar: true,
-        setState: setState,
-        controller: TextEditingController(text: this.searchText),
-        closeOnSubmit: true,
-        clearOnSubmit: false,
-        onCleared: () {
-          this.search("");
-          setState(() => {this.searchText = ""});
-        },
-        onSubmitted: (searchText) {
-          setState(() => {this.searchText = searchText});
-          this.search(searchText);
-        },
-        onChanged: (searchText) {
-          setState(() => {this.searchText = searchText});
-          this.search(searchText);
-        },
-        buildDefaultAppBar: buildAppBar,
-        hintText: "Suche..");
+      inBar: true,
+      setState: setState,
+      controller: TextEditingController(text: this.searchText),
+      closeOnSubmit: true,
+      clearOnSubmit: false,
+      onCleared: () {
+        this.search("");
+        setState(() => {this.searchText = ""});
+      },
+      onSubmitted: (searchText) {
+        setState(() => {this.searchText = searchText});
+        this.search(searchText);
+      },
+      onChanged: (searchText) {
+        setState(() => {this.searchText = searchText});
+        this.search(searchText);
+      },
+      buildDefaultAppBar: buildAppBar,
+      hintText: "Suche..",
+    );
   }
 
   AppBar buildAppBar(BuildContext context) {
     return new AppBar(
-      elevation: 0,
       backgroundColor: this.primary,
       title: Text(
         this.viewTranslator[this.showView]["appBarTitle"],
         style: TextStyle(color: Colors.white),
       ),
-      iconTheme: IconThemeData(color: this.getTextColor()),
+      iconTheme: IconThemeData(
+        color: this.getTextColor(),
+      ),
       actions: <Widget>[
         searchBar.getSearchAction(context),
         IconButton(
-            onPressed: () {
-              this.init(context: context);
-            },
-            icon: const Icon(Icons.refresh)),
+          onPressed: () {
+            this.init(context: context);
+          },
+          icon: const Icon(Icons.refresh),
+        ),
       ],
     );
   }
@@ -98,17 +103,19 @@ class FPlanState extends State<FPlan> {
       else {
         searchText = searchText.toLowerCase();
         // TODO: Search for all activated columns:
-        this.combination.addAll(this
-            .vplan
-            .where((e) => (e["Kurs"].toLowerCase().contains(searchText) ||
-                // e["Wochentag"].toLowerCase().contains(searchText) ||
-                e["Stunde"].toLowerCase().contains(searchText) ||
-                e["Fach"].toLowerCase().contains(searchText) ||
-                e["Lehrer"].toLowerCase().contains(searchText) ||
-                e["Raum"].toLowerCase().contains(searchText) ||
-                e["Info"].toLowerCase().contains(searchText) ||
-                e["Vertretungstext"].toLowerCase().contains(searchText)))
-            .toList());
+        this.combination.addAll(
+              this
+                  .vplan
+                  .where((e) => (e["Kurs"].toLowerCase().contains(searchText) ||
+                      // e["Wochentag"].toLowerCase().contains(searchText) ||
+                      e["Stunde"].toLowerCase().contains(searchText) ||
+                      e["Fach"].toLowerCase().contains(searchText) ||
+                      e["Lehrer"].toLowerCase().contains(searchText) ||
+                      e["Raum"].toLowerCase().contains(searchText) ||
+                      e["Info"].toLowerCase().contains(searchText) ||
+                      e["Vertretungstext"].toLowerCase().contains(searchText)))
+                  .toList(),
+            );
       }
     });
   }
@@ -117,15 +124,30 @@ class FPlanState extends State<FPlan> {
     SharedPreferences appPrefs = await SharedPreferences.getInstance();
     this.manualDarkMode =
         appPrefs.containsKey("manualDarkMode") ? appPrefs.getBool("manualDarkMode") : false;
-    appPrefs.setBool("manualDarkMode", this.manualDarkMode);
+    // appPrefs.setBool("manualDarkMode", this.manualDarkMode);
     this.autoDarkMode =
         appPrefs.containsKey("autoDarkMode") ? appPrefs.getBool("autoDarkMode") : false;
-    appPrefs.setBool("autoDarkMode", this.autoDarkMode);
-    if (appPrefs.containsKey("primary")) {
+    // appPrefs.setBool("autoDarkMode", this.autoDarkMode);
+    if (appPrefs.containsKey("primary"))
       this.primary = Colors.primaries[appPrefs.getInt("primary")];
-    } else
+    else
       this.primary = Colors.blue;
     this.computeSecondary(this.primary);
+    if (appPrefs.containsKey("fixedColumn"))
+      this.fixedColumn = appPrefs.getInt("fixedColumn");
+    else
+      this.fixedColumn = 0;
+    if (appPrefs.containsKey("header"))
+      this.header = appPrefs.getStringList("header");
+    else
+      this.header = List.from(this.possibleHeader);
+    if (appPrefs.containsKey("headerOrder"))
+      this.headerOrder = appPrefs.getStringList("headerOrder").map((i) => int.parse(i)).toList();
+    else
+      this.headerOrder = [0, 1, 2, 3, 4, 5, 6];
+
+    // Init VPlan
+    this.init();
   }
 
   setAPBool(String key, bool value) async {
@@ -138,6 +160,11 @@ class FPlanState extends State<FPlan> {
     appPrefs.setString(key, value);
   }
 
+  setAPStringList(String key, List<String> values) async {
+    SharedPreferences appPrefs = await SharedPreferences.getInstance();
+    appPrefs.setStringList(key, values);
+  }
+
   setAPInt(String key, int value) async {
     SharedPreferences appPrefs = await SharedPreferences.getInstance();
     appPrefs.setInt(key, value);
@@ -145,7 +172,6 @@ class FPlanState extends State<FPlan> {
 
   @override
   void initState() {
-    this.init();
     this.loadAppPreferences();
     super.initState();
   }
@@ -164,7 +190,11 @@ class FPlanState extends State<FPlan> {
     // var response = http.get(Uri.http('192.168.0.122', 'vplan/latest'));
     response.then((data) {
       var entriesJSON = jsonDecode(data.body)['entries'];
-      this.vplan.addAll(List.from(entriesJSON));
+      List entries = List.from(entriesJSON);
+      entries.sort((a, b) {
+        return a["ID"].compareTo(b["ID"]);
+      });
+      this.vplan.addAll(entries);
       // Test Start
       // List<dynamic> testDay = jsonDecode(jsonEncode(this.vplan));
       // testDay.forEach((e) {
@@ -270,16 +300,16 @@ class FPlanState extends State<FPlan> {
     }
   }
 
-  Color getKursColor(var kursName) {
+  Color getColumnColor(var columnName) {
     Color odd = this.primary;
     Color even = this.secondary;
-    if (kursName == "Kurs") {
+    if (columnName == this.header[this.fixedColumn]) {
       this.lastKursColor = even;
       return even;
     }
-    if (this.lastKurs != kursName) {
+    if (this.lastKurs != columnName) {
       this.lastKursColor = this.lastKursColor == even ? odd : even;
-      this.lastKurs = kursName;
+      this.lastKurs = columnName;
       return this.lastKursColor;
     } else
       return this.lastKursColor;
@@ -297,19 +327,20 @@ class FPlanState extends State<FPlan> {
   Color getTextColor({Color color}) {
     if (color != null)
       return color.computeLuminance() > 0.5 ? Colors.black : Colors.white;
-    else
+    else if (this.primary != null)
       return this.primary.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+    else
+      return Colors.grey;
   }
 
   List<dynamic> getCombinedFiltered() {
-    // TODO: Option to only filter per Day:
     return this
         .combination
         .where((element) =>
             (this.selectedDay == 0
                 ? element["Wochentag"] == this.firstDay
                 : element["Wochentag"] == this.secondDay) ||
-            element["Kurs"] == "Kurs")
+            element[this.header[this.fixedColumn]] == this.header[this.fixedColumn])
         .toList();
   }
 
@@ -330,6 +361,16 @@ class FPlanState extends State<FPlan> {
             : false;
   }
 
+  Divider settingsDivier() {
+    return Divider(
+      color: this.secondary,
+      indent: 15.0,
+      endIndent: 15.0,
+      height: 0,
+      thickness: 1,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -343,23 +384,58 @@ class FPlanState extends State<FPlan> {
       theme: ThemeData(
         primarySwatch: this.primary,
         canvasColor: Colors.white,
+        accentColor: this.primary,
         textTheme: Typography.material2018().black,
         brightness: Brightness.light,
         scaffoldBackgroundColor: Colors.white,
+        unselectedWidgetColor: this.getTextColor(),
+        cardTheme: CardTheme(
+          color: Colors.white,
+          margin: EdgeInsets.all(15.0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: this.secondary, width: 1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          selectedItemColor: this.getTextColor(),
+          unselectedItemColor: this.getTextColor().withOpacity(0.5),
+          backgroundColor: this.secondary,
+          elevation: 16,
+        ),
+        appBarTheme: AppBarTheme(backgroundColor: this.primary, elevation: 0),
       ),
       darkTheme: ThemeData(
         primarySwatch: this.primary,
         canvasColor: Colors.black,
+        accentColor: this.primary,
         textTheme: Typography.material2018().white,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: Colors.black,
+        unselectedWidgetColor: this.getTextColor(),
+        cardTheme: CardTheme(
+          color: Colors.black,
+          margin: EdgeInsets.all(15.0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(color: this.secondary, width: 1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+        bottomNavigationBarTheme: BottomNavigationBarThemeData(
+          selectedItemColor: this.getTextColor(),
+          unselectedItemColor: this.getTextColor().withOpacity(0.5),
+          backgroundColor: this.secondary,
+          elevation: 16,
+        ),
+        appBarTheme: AppBarTheme(elevation: 0),
       ),
       home: Builder(
         builder: (context) => Scaffold(
           appBar: this.showView == "vplan"
               ? this.searchBar.build(context)
               : AppBar(
-                  elevation: 0,
                   iconTheme: IconThemeData(color: this.primary),
                   backgroundColor: this.isDarkMode(context) ? Colors.black : Colors.white,
                   title: Text(
@@ -435,15 +511,16 @@ class FPlanState extends State<FPlan> {
                                       child: Container(
                                         height: 50,
                                         alignment: Alignment.center,
-                                        // TODO: Option to use a different column instead:
-                                        width: this.getColumnWidth("Kurs"),
-                                        color: this.getKursColor(entry["Kurs"]),
+                                        width: this.getColumnWidth(this.header[this.fixedColumn]),
+                                        color: this
+                                            .getColumnColor(entry[this.header[this.fixedColumn]]),
                                         padding: const EdgeInsets.all(8),
                                         child: Text(
-                                          entry["Kurs"],
+                                          entry[this.header[this.fixedColumn]],
                                           style: TextStyle(
                                               color: this.getTextColor(
-                                                  color: this.getKursColor(entry["Kurs"]))),
+                                                  color: this.getColumnColor(
+                                                      entry[this.header[this.fixedColumn]]))),
                                         ),
                                       ),
                                     ),
@@ -460,25 +537,31 @@ class FPlanState extends State<FPlan> {
                                   for (var entry in this.getCombinedFiltered())
                                     Row(
                                       children: <Widget>[
-                                        for (var key in this.header)
-                                          if (key != "Kurs")
+                                        for (int key = 0; key < this.header.length; key++)
+                                          if (this.header[this.headerOrder[key]] !=
+                                              this.header[this.fixedColumn])
                                             Center(
                                               child: Container(
                                                 height: 50,
-                                                width: this.getColumnWidth(key),
+                                                width: this.getColumnWidth(
+                                                    this.header[this.headerOrder[key]]),
                                                 alignment: Alignment.center,
-                                                color: this
-                                                    .getCellBackgroundColor(entry, key, context),
+                                                color: this.getCellBackgroundColor(entry,
+                                                    this.header[this.headerOrder[key]], context),
                                                 padding: const EdgeInsets.all(8),
                                                 child: Text(
-                                                  entry[key] == "N/A"
+                                                  entry[this.header[this.headerOrder[key]]] == "N/A"
                                                       ? "Keine Information"
-                                                      : entry[key],
+                                                      : entry[this.header[this.headerOrder[key]]],
                                                   style: TextStyle(
                                                       color: this.getTextColor(
                                                           color: this.getCellBackgroundColor(
-                                                              entry, key, context)),
-                                                      fontStyle: entry[key] == "N/A"
+                                                              entry,
+                                                              this.header[this.headerOrder[key]],
+                                                              context)),
+                                                      fontStyle: entry[this
+                                                                  .header[this.headerOrder[key]]] ==
+                                                              "N/A"
                                                           ? FontStyle.italic
                                                           : null),
                                                 ),
@@ -511,24 +594,20 @@ class FPlanState extends State<FPlan> {
                       dense: true,
                     ),
                     Card(
-                      margin: EdgeInsets.all(15.0),
-                      color: this.isDarkMode(context) ? Colors.black : Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        side: BorderSide(color: this.secondary, width: 1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
                       child: Column(
                         children: [
                           ListTile(
                             leading: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(this.autoDarkMode
-                                    ? Icons.brightness_auto
-                                    : this.isDarkMode(context)
-                                        ? Icons.brightness_2
-                                        : Icons.brightness_high),
+                                Icon(
+                                  this.autoDarkMode
+                                      ? Icons.brightness_auto
+                                      : this.isDarkMode(context)
+                                          ? Icons.brightness_2
+                                          : Icons.brightness_high,
+                                  color: this.primary,
+                                ),
                               ],
                             ),
                             shape: RoundedRectangleBorder(
@@ -539,7 +618,7 @@ class FPlanState extends State<FPlan> {
                             ),
                             title: Text("App Thema"),
                             subtitle: Text(this.autoDarkMode
-                                ? "Automatisch"
+                                ? "Nach System"
                                 : this.isDarkMode(context)
                                     ? "Dunkel"
                                     : "Hell"),
@@ -549,11 +628,27 @@ class FPlanState extends State<FPlan> {
                                 builder: (_) => SimpleDialog(
                                   backgroundColor: this.secondary,
                                   contentPadding: EdgeInsets.all(6.0),
-                                  title: Text(
-                                    "App Thema",
-                                    style: TextStyle(
-                                      color: this.getTextColor(color: this.secondary),
-                                    ),
+                                  title: Row(
+                                    children: [
+                                      Icon(
+                                        this.autoDarkMode
+                                            ? Icons.brightness_auto
+                                            : this.isDarkMode(context)
+                                                ? Icons.brightness_2
+                                                : Icons.brightness_high,
+                                        size: 35,
+                                        color: this.getTextColor(),
+                                      ),
+                                      Divider(
+                                        indent: 10.0,
+                                      ),
+                                      Text(
+                                        "App Thema",
+                                        style: TextStyle(
+                                          color: this.getTextColor(color: this.secondary),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   children: [
                                     SimpleDialogOption(
@@ -620,18 +715,13 @@ class FPlanState extends State<FPlan> {
                               );
                             },
                           ),
-                          Divider(
-                            color: this.secondary,
-                            indent: 15.0,
-                            endIndent: 15.0,
-                            height: 2.0,
-                          ),
+                          this.settingsDivier(),
                           ListTile(
                             leading: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  Icons.brightness_1,
+                                  Icons.color_lens,
                                   color: this.primary,
                                 ),
                               ],
@@ -650,11 +740,23 @@ class FPlanState extends State<FPlan> {
                                 builder: (_) => AlertDialog(
                                   backgroundColor: this.secondary,
                                   contentPadding: EdgeInsets.all(6.0),
-                                  title: Text(
-                                    "App Farbe",
-                                    style: TextStyle(
-                                      color: this.getTextColor(color: this.secondary),
-                                    ),
+                                  title: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.color_lens,
+                                        size: 35,
+                                        color: this.getTextColor(),
+                                      ),
+                                      Divider(
+                                        indent: 10.0,
+                                      ),
+                                      Text(
+                                        "App Farbe",
+                                        style: TextStyle(
+                                          color: this.getTextColor(color: this.secondary),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                   content: Container(
                                     width: 100,
@@ -699,14 +801,176 @@ class FPlanState extends State<FPlan> {
                         ],
                       ),
                     ),
+                    ListTile(
+                      title: Text(
+                        "Anzeige",
+                        style: TextStyle(color: this.secondary, fontWeight: FontWeight.bold),
+                      ),
+                      dense: true,
+                    ),
+                    Card(
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.pivot_table_chart,
+                                  color: this.primary,
+                                )
+                              ],
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(10),
+                                topRight: Radius.circular(10),
+                              ),
+                            ),
+                            title: Text("Feste Spalte"),
+                            subtitle: Text(this.header[this.fixedColumn]),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => SimpleDialog(
+                                  backgroundColor: this.secondary,
+                                  contentPadding: EdgeInsets.all(6.0),
+                                  title: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.pivot_table_chart,
+                                        size: 35,
+                                        color: this.getTextColor(),
+                                      ),
+                                      Divider(
+                                        indent: 10.0,
+                                      ),
+                                      Text(
+                                        "Feste Spalte",
+                                        style: TextStyle(
+                                          color: this.getTextColor(color: this.secondary),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  children: [
+                                    for (int i = 0; i < this.header.length; i++)
+                                      SimpleDialogOption(
+                                        padding: EdgeInsets.all(0),
+                                        child: RadioListTile(
+                                          activeColor: this.getTextColor(),
+                                          value: i,
+                                          groupValue: this.fixedColumn,
+                                          title: Text(
+                                            this.header[i],
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              color: this.getTextColor(color: this.secondary),
+                                            ),
+                                          ),
+                                          onChanged: (value) {
+                                            setState(() {
+                                              this.fixedColumn = value;
+                                            });
+                                            this.setAPInt("fixedColumn", value);
+                                            Navigator.pop(context);
+                                          },
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          this.settingsDivier(),
+                          ListTile(
+                            leading: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.table_chart,
+                                  color: this.primary,
+                                ),
+                              ],
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(10),
+                                bottomRight: Radius.circular(10),
+                              ),
+                            ),
+                            title: Text("Spalten"),
+                            subtitle: Text("Anzeige der Spalten"),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => Scaffold(
+                                  appBar: AppBar(
+                                    iconTheme: IconThemeData(
+                                      color: this.primary,
+                                    ),
+                                    backgroundColor:
+                                        this.isDarkMode(context) ? Colors.black : Colors.white,
+                                    title: Text(
+                                      "Spalten",
+                                      style: TextStyle(
+                                        color: this.primary,
+                                      ),
+                                    ),
+                                  ),
+                                  body: ReorderableListView(
+                                    onReorder: (int oldIndex, int newIndex) {
+                                      setState(() {
+                                        int oI = this.headerOrder[oldIndex];
+                                        this.headerOrder[oldIndex] = this.headerOrder[newIndex];
+                                        this.headerOrder[newIndex] = oI;
+                                      });
+                                      setAPStringList("headerOrder",
+                                          this.headerOrder.map((i) => i.toString()).toList());
+                                    },
+                                    children: [
+                                      for (int key = 0; key < this.possibleHeader.length; key++)
+                                        if (this.headerOrder[key] != this.fixedColumn)
+                                          CheckboxListTile(
+                                            controlAffinity: ListTileControlAffinity.leading,
+                                            secondary: Icon(Icons.drag_handle),
+                                            checkColor: this.secondary,
+                                            activeColor: this.getTextColor(),
+                                            value: this.header.contains(
+                                                  this.possibleHeader[this.headerOrder[key]],
+                                                ),
+                                            onChanged: (value) {
+                                              setState(() {
+                                                if (!value)
+                                                  this.header.remove(
+                                                      this.possibleHeader[this.headerOrder[key]]);
+                                                else
+                                                  this.header.insert(this.headerOrder[key],
+                                                      this.possibleHeader[this.headerOrder[key]]);
+                                                setAPStringList("header", this.header);
+                                              });
+                                            },
+                                            key: Key(
+                                              this.possibleHeader[this.headerOrder[key]],
+                                            ),
+                                            tileColor: this.secondary,
+                                            title: Text(
+                                              this.possibleHeader[this.headerOrder[key]],
+                                            ),
+                                          )
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    )
                   ],
                 ),
           bottomNavigationBar: this.showView == "vplan"
               ? BottomNavigationBar(
-                  selectedItemColor: this.getTextColor(),
-                  unselectedItemColor: this.getTextColor().withOpacity(0.5),
-                  backgroundColor: this.secondary,
-                  elevation: 16,
                   currentIndex: this.selectedDay,
                   onTap: (day) {
                     setState(() {
@@ -729,4 +993,6 @@ class FPlanState extends State<FPlan> {
       ),
     );
   }
+
+  bool isExpanded = true;
 }
