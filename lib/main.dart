@@ -85,11 +85,13 @@ class FPlanState extends State<FPlan> {
       actions: <Widget>[
         searchBar.getSearchAction(context),
         IconButton(
-          onPressed: () {
-            this.init(context: context);
-          },
+          onPressed: this.canRefresh
+              ? () {
+                  this.init(context: context);
+                }
+              : null,
           icon: const Icon(Icons.refresh),
-        ),
+        )
       ],
     );
   }
@@ -176,77 +178,95 @@ class FPlanState extends State<FPlan> {
     super.initState();
   }
 
-  void init({context}) {
-    setState(() {
-      this.loading = true;
-    });
+  bool canRefresh = true;
 
-    this.combination = [];
-    this.vplan = [];
-    this.lastKurs = "";
-    this.lastKursColor = null;
-    this.fillHeaderNames();
-    var response = http.get(Uri.https('api.zlyfer.net', 'vplan/latest'));
-    // var response = http.get(Uri.http('192.168.0.122', 'vplan/latest'));
-    response.then((data) {
-      var entriesJSON = jsonDecode(data.body)['entries'];
-      List entries = List.from(entriesJSON);
-      entries.sort((a, b) {
-        return a["ID"].compareTo(b["ID"]);
-      });
-      this.vplan.addAll(entries);
-      // Test Start
-      // List<dynamic> testDay = jsonDecode(jsonEncode(this.vplan));
-      // testDay.forEach((e) {
-      //   e["Wochentag"] = "Samstag";
-      // });
-      // this.vplan.addAll(testDay);
-      // Test End
-      String tmpDay = "";
-      this.vplan.forEach((element) {
-        if (tmpDay == "") {
-          tmpDay = element["Wochentag"];
-          setState(() {
-            this.firstDay = tmpDay;
-          });
-        } else if (tmpDay != element["Wochentag"]) {
-          setState(() {
-            this.secondDay = element["Wochentag"];
-          });
-        }
-      });
+  void init({context}) {
+    print("test1");
+    if (this.canRefresh) {
       setState(() {
-        this.combination.add(this.headerNames);
-        this.combination.addAll(this.vplan);
-        this.loading = false;
+        this.loading = true;
+        this.canRefresh = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Laden erfolgreich', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(milliseconds: 1500),
-        action: SnackBarAction(
-          textColor: Colors.white,
-          label: 'Okay',
-          onPressed: () {},
-        ),
-      ));
-    }).catchError((error) {
-      setState(() {
-        this.loading = false;
+
+      this.combination = [];
+      this.vplan = [];
+      this.lastKurs = "";
+      this.lastKursColor = null;
+      this.fillHeaderNames();
+      var response = http.get(Uri.https('api.zlyfer.net', 'vplan/latest'));
+      // var response = http.get(Uri.http('192.168.0.122', 'vplan/latest'));
+      response.then((data) {
+        var entriesJSON = jsonDecode(data.body)['entries'];
+        List entries = List.from(entriesJSON);
+        entries.sort((a, b) {
+          return a["ID"].compareTo(b["ID"]);
+        });
+        this.vplan.addAll(entries);
+        // Test Start
+        // List<dynamic> testDay = jsonDecode(jsonEncode(this.vplan));
+        // testDay.forEach((e) {
+        //   e["Wochentag"] = "Samstag";
+        // });
+        // this.vplan.addAll(testDay);
+        // Test End
+        String tmpDay = "";
+        this.vplan.forEach((element) {
+          if (tmpDay == "") {
+            tmpDay = element["Wochentag"];
+            setState(() {
+              this.firstDay = tmpDay;
+            });
+          } else if (tmpDay != element["Wochentag"]) {
+            setState(() {
+              this.secondDay = element["Wochentag"];
+            });
+          }
+        });
+        setState(() {
+          this.combination.add(this.headerNames);
+          this.combination.addAll(this.vplan);
+          this.loading = false;
+        });
+        Future.delayed(Duration(milliseconds: 1500), () {
+          setState(() {
+            this.canRefresh = true;
+          });
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: WillPopScope(
+            onWillPop: () async {
+              ScaffoldMessenger.of(context).removeCurrentSnackBar();
+              return true;
+            },
+            child: Text('Laden erfolgreich', style: TextStyle(color: Colors.white)),
+          ),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(milliseconds: 1500),
+          action: SnackBarAction(
+            textColor: Colors.white,
+            label: 'Okay',
+            onPressed: () {},
+          ),
+        ));
+      }).catchError((error) {
+        setState(() {
+          this.loading = false;
+          this.canRefresh = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Fehler beim Laden', style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(milliseconds: 2500),
+          action: SnackBarAction(
+            textColor: Colors.white,
+            label: 'Okay',
+            onPressed: () {},
+          ),
+        ));
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Fehler beim Laden', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        duration: Duration(milliseconds: 2500),
-        action: SnackBarAction(
-          textColor: Colors.white,
-          label: 'Okay',
-          onPressed: () {},
-        ),
-      ));
-    });
+    }
   }
 
   computeSecondary(color) {
