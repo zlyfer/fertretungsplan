@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_search_bar/flutter_search_bar.dart';
+import 'package:http/http.dart' as http;
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   runApp(FPlan());
@@ -56,6 +57,13 @@ class FPlanState extends State<FPlan> {
       "appBarTitle": "Einstellungen",
     }
   };
+  bool colorful = false;
+  PackageInfo _packageInfo = PackageInfo(
+    appName: 'Unbekannt',
+    packageName: 'Unbekannt',
+    version: 'Unbekannt',
+    buildNumber: 'Unbekannt',
+  );
 
   FPlanState() {
     this.searchBar = new SearchBar(
@@ -83,13 +91,17 @@ class FPlanState extends State<FPlan> {
 
   AppBar buildAppBar(BuildContext context) {
     return new AppBar(
-      backgroundColor: this.primary,
+      backgroundColor: this.colorful
+          ? this.primary
+          : this.isDarkMode(context)
+              ? Colors.black
+              : Colors.white,
       title: Text(
         this.viewTranslator[this.showView]["appBarTitle"],
-        style: TextStyle(color: Colors.white),
+        style: TextStyle(color: this.colorful ? Colors.white : this.primary),
       ),
       iconTheme: IconThemeData(
-        color: this.getTextColor(),
+        color: this.colorful ? this.getTextColor() : this.primary,
       ),
       actions: <Widget>[
         searchBar.getSearchAction(context),
@@ -137,18 +149,18 @@ class FPlanState extends State<FPlan> {
         appPrefs.containsKey("manualDarkMode") ? appPrefs.getBool("manualDarkMode") : true;
     this.autoDarkMode =
         appPrefs.containsKey("autoDarkMode") ? appPrefs.getBool("autoDarkMode") : true;
-    if (appPrefs.containsKey("primary"))
-      this.primary = Colors.primaries[appPrefs.getInt("primary")];
-    else
-      this.primary = Colors.blue;
-    this.computeSecondary(this.primary);
-    if (appPrefs.containsKey("fixedColumn"))
-      this.fixedColumn = appPrefs.getInt("fixedColumn");
-    else
-      this.fixedColumn = 0;
+    this.primary = appPrefs.containsKey("primary")
+        ? Colors.primaries[appPrefs.getInt("primary")]
+        : Colors.blue;
+    this.fixedColumn = appPrefs.containsKey("fixedColumn") ? appPrefs.getInt("fixedColumn") : 0;
+    this.colorful = appPrefs.containsKey("colorful") ? appPrefs.getBool("colorful") : true;
     if (appPrefs.containsKey("header")) this.header = appPrefs.getStringList("header");
-
     // Init VPlan
+    this.computeSecondary(this.primary);
+    final info = await PackageInfo.fromPlatform();
+    setState(() {
+      _packageInfo = info;
+    });
     this.init();
   }
 
@@ -322,12 +334,16 @@ class FPlanState extends State<FPlan> {
     }
   }
 
-  Color getColumnColor(var columnName) {
+  Color getColumnColor(var columnName, var context) {
     Color odd = this.primary;
     Color even = this.secondary;
     if (columnName == this.header[this.fixedColumn]) {
       this.lastKursColor = even;
-      return even;
+      return this.colorful
+          ? even
+          : this.isDarkMode(context)
+              ? Colors.black
+              : Colors.white;
     }
     if (this.lastKurs != columnName) {
       this.lastKursColor = this.lastKursColor == even ? odd : even;
@@ -339,7 +355,11 @@ class FPlanState extends State<FPlan> {
 
   Color getCellBackgroundColor(var entry, var key, var context) {
     if (this.combination.indexOf(entry) == 0)
-      return this.secondary;
+      return this.colorful
+          ? this.secondary
+          : this.isDarkMode(context)
+              ? Colors.black
+              : Colors.white;
     else if (entry[key] == "Entfall")
       return Colors.red.shade400;
     else
@@ -352,7 +372,7 @@ class FPlanState extends State<FPlan> {
     else if (this.primary != null)
       return this.primary.computeLuminance() > 0.5 ? Colors.black : Colors.white;
     else
-      return Colors.grey;
+      return Colors.pink;
   }
 
   List<dynamic> getCombinedFiltered() {
@@ -401,7 +421,7 @@ class FPlanState extends State<FPlan> {
         textTheme: Typography.material2018().black,
         brightness: Brightness.light,
         scaffoldBackgroundColor: Colors.white,
-        unselectedWidgetColor: this.getTextColor(),
+        unselectedWidgetColor: this.getTextColor(color: this.secondary),
         cardTheme: CardTheme(
           color: Colors.white,
           margin: EdgeInsets.all(15.0),
@@ -412,12 +432,18 @@ class FPlanState extends State<FPlan> {
           ),
         ),
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          selectedItemColor: this.getTextColor(),
-          unselectedItemColor: this.getTextColor().withOpacity(0.5),
-          backgroundColor: this.secondary,
+          selectedItemColor: this.colorful ? this.getTextColor() : this.primary,
+          unselectedItemColor:
+              this.colorful ? this.getTextColor().withOpacity(0.5) : this.secondary,
+          backgroundColor: this.colorful ? this.secondary : Colors.white,
           elevation: 16,
         ),
-        appBarTheme: AppBarTheme(backgroundColor: this.primary, elevation: 0),
+        appBarTheme: AppBarTheme(
+            iconTheme: IconThemeData(
+              color: this.colorful ? Colors.white : this.primary,
+            ),
+            backgroundColor: this.colorful ? this.primary : Colors.white,
+            elevation: 0),
       ),
       darkTheme: ThemeData(
         primarySwatch: this.primary,
@@ -426,7 +452,7 @@ class FPlanState extends State<FPlan> {
         textTheme: Typography.material2018().white,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: Colors.black,
-        unselectedWidgetColor: this.getTextColor(),
+        unselectedWidgetColor: this.getTextColor(color: this.secondary),
         cardTheme: CardTheme(
           color: Colors.black,
           margin: EdgeInsets.all(15.0),
@@ -437,12 +463,18 @@ class FPlanState extends State<FPlan> {
           ),
         ),
         bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          selectedItemColor: this.getTextColor(),
-          unselectedItemColor: this.getTextColor().withOpacity(0.5),
-          backgroundColor: this.secondary,
+          selectedItemColor: this.colorful ? this.getTextColor() : this.primary,
+          unselectedItemColor:
+              this.colorful ? this.getTextColor().withOpacity(0.5) : this.secondary,
+          backgroundColor: this.colorful ? this.secondary : Colors.black,
           elevation: 16,
         ),
-        appBarTheme: AppBarTheme(elevation: 0),
+        appBarTheme: AppBarTheme(
+            iconTheme: IconThemeData(
+              color: this.colorful ? Colors.black : this.primary,
+            ),
+            backgroundColor: this.colorful ? this.primary : Colors.black,
+            elevation: 0),
       ),
       home: Builder(
         builder: (context) => Scaffold(
@@ -525,16 +557,17 @@ class FPlanState extends State<FPlan> {
                                         height: 50,
                                         alignment: Alignment.center,
                                         width: this.getColumnWidth(this.header[this.fixedColumn]),
-                                        color: this
-                                            .getColumnColor(entry[this.header[this.fixedColumn]]),
+                                        color: this.getColumnColor(
+                                            entry[this.header[this.fixedColumn]], context),
                                         padding: const EdgeInsets.all(8),
                                         child: Text(
                                           entry[this.header[this.fixedColumn]],
                                           style: TextStyle(
-                                              color: this.getTextColor(
-                                                  color: this.getColumnColor(
-                                            entry[this.header[this.fixedColumn]],
-                                          ))),
+                                            color: this.getTextColor(
+                                              color: this.getColumnColor(
+                                                  entry[this.header[this.fixedColumn]], context),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -596,221 +629,6 @@ class FPlanState extends State<FPlan> {
                   children: [
                     ListTile(
                       title: Text(
-                        "Design",
-                        style: TextStyle(color: this.secondary, fontWeight: FontWeight.bold),
-                      ),
-                      dense: true,
-                    ),
-                    Card(
-                      child: Column(
-                        children: [
-                          ListTile(
-                            leading: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  this.autoDarkMode
-                                      ? Icons.brightness_auto
-                                      : this.isDarkMode(context)
-                                          ? Icons.brightness_2
-                                          : Icons.brightness_high,
-                                  color: this.primary,
-                                ),
-                              ],
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(10),
-                                topRight: Radius.circular(10),
-                              ),
-                            ),
-                            title: Text("App Thema"),
-                            subtitle: Text(this.autoDarkMode
-                                ? "Nach System"
-                                : this.isDarkMode(context)
-                                    ? "Dunkel"
-                                    : "Hell"),
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (_) => SimpleDialog(
-                                  backgroundColor: this.secondary,
-                                  contentPadding: EdgeInsets.all(6.0),
-                                  title: Row(
-                                    children: [
-                                      Icon(
-                                        this.autoDarkMode
-                                            ? Icons.brightness_auto
-                                            : this.isDarkMode(context)
-                                                ? Icons.brightness_2
-                                                : Icons.brightness_high,
-                                        size: 35,
-                                        color: this.getTextColor(),
-                                      ),
-                                      Divider(
-                                        indent: 10.0,
-                                      ),
-                                      Text(
-                                        "App Thema",
-                                        style: TextStyle(
-                                          color: this.getTextColor(color: this.secondary),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  children: [
-                                    SimpleDialogOption(
-                                      child: Text(
-                                        "Automatisch",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: this.getTextColor(color: this.secondary),
-                                        ),
-                                      ),
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
-                                      onPressed: () {
-                                        setState(() {
-                                          this.autoDarkMode = true;
-                                          // this.manualDarkMode = false;
-                                        });
-                                        this.setAPBool("autoDarkMode", true);
-                                        Navigator.pop(context);
-                                      },
-                                    ),
-                                    SimpleDialogOption(
-                                      child: Text(
-                                        "Hell",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: this.getTextColor(color: this.secondary),
-                                        ),
-                                      ),
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
-                                      onPressed: () {
-                                        setState(() {
-                                          this.autoDarkMode = false;
-                                          this.manualDarkMode = false;
-                                        });
-                                        this.setAPBool("autoDarkMode", false);
-                                        this.setAPBool("manualDarkMode", false);
-                                        Navigator.pop(context);
-                                      },
-                                    ),
-                                    SimpleDialogOption(
-                                      child: Text(
-                                        "Dunkel",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: this.getTextColor(color: this.secondary),
-                                        ),
-                                      ),
-                                      padding:
-                                          EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
-                                      onPressed: () {
-                                        setState(() {
-                                          this.autoDarkMode = false;
-                                          this.manualDarkMode = true;
-                                        });
-                                        this.setAPBool("autoDarkMode", false);
-                                        this.setAPBool("manualDarkMode", true);
-                                        Navigator.pop(context);
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                          ),
-                          this.settingsDivier(),
-                          ListTile(
-                            leading: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.color_lens,
-                                  color: this.primary,
-                                ),
-                              ],
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.only(
-                                bottomLeft: Radius.circular(10),
-                                bottomRight: Radius.circular(10),
-                              ),
-                            ),
-                            title: Text("App Farbe"),
-                            subtitle: Text("Accentfarbe der App"),
-                            onTap: () {
-                              showDialog(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  backgroundColor: this.secondary,
-                                  contentPadding: EdgeInsets.all(6.0),
-                                  title: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.color_lens,
-                                        size: 35,
-                                        color: this.getTextColor(),
-                                      ),
-                                      Divider(
-                                        indent: 10.0,
-                                      ),
-                                      Text(
-                                        "App Farbe",
-                                        style: TextStyle(
-                                          color: this.getTextColor(color: this.secondary),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  content: Container(
-                                    width: 100,
-                                    height: (Colors.primaries.length / 6 * 50).roundToDouble(),
-                                    child: GridView.count(
-                                      crossAxisCount: 6,
-                                      childAspectRatio: 1,
-                                      crossAxisSpacing: 0,
-                                      padding: EdgeInsets.all(8),
-                                      children: [
-                                        for (var i = 0; i < Colors.primaries.length; i++)
-                                          Container(
-                                            padding: EdgeInsets.all(4),
-                                            child: GestureDetector(
-                                              onTap: () {
-                                                setState(() {
-                                                  this.primary = Colors.primaries[i];
-                                                  this.computeSecondary(Colors.primaries[i]);
-                                                });
-                                                setAPInt("primary", i);
-                                                Navigator.pop(context);
-                                              },
-                                              child: Material(
-                                                shape: CircleBorder(),
-                                                elevation: 2,
-                                                color: Colors.primaries[i],
-                                                child: this.primary == Colors.primaries[i]
-                                                    ? Icon(Icons.check,
-                                                        color: this.getTextColor(
-                                                            color: Colors.primaries[i]))
-                                                    : null,
-                                              ),
-                                            ),
-                                          )
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    ListTile(
-                      title: Text(
                         "Anzeige",
                         style: TextStyle(color: this.secondary, fontWeight: FontWeight.bold),
                       ),
@@ -848,7 +666,7 @@ class FPlanState extends State<FPlan> {
                                       Icon(
                                         Icons.pivot_table_chart,
                                         size: 35,
-                                        color: this.getTextColor(),
+                                        color: this.getTextColor(color: this.secondary),
                                       ),
                                       Divider(
                                         indent: 10.0,
@@ -866,7 +684,7 @@ class FPlanState extends State<FPlan> {
                                       SimpleDialogOption(
                                         padding: EdgeInsets.all(0),
                                         child: RadioListTile(
-                                          activeColor: this.getTextColor(),
+                                          activeColor: this.getTextColor(color: this.secondary),
                                           value: i,
                                           groupValue: this.fixedColumn,
                                           title: Text(
@@ -994,7 +812,349 @@ class FPlanState extends State<FPlan> {
                           ),
                         ],
                       ),
-                    )
+                    ),
+                    ListTile(
+                      title: Text(
+                        "Design",
+                        style: TextStyle(color: this.secondary, fontWeight: FontWeight.bold),
+                      ),
+                      dense: true,
+                    ),
+                    Card(
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  this.autoDarkMode
+                                      ? Icons.brightness_auto
+                                      : this.isDarkMode(context)
+                                          ? Icons.brightness_2
+                                          : Icons.brightness_high,
+                                  color: this.primary,
+                                ),
+                              ],
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(10),
+                                topRight: Radius.circular(10),
+                              ),
+                            ),
+                            title: Text("App Thema"),
+                            subtitle: Text(this.autoDarkMode
+                                ? "Nach System"
+                                : this.isDarkMode(context)
+                                    ? "Dunkel"
+                                    : "Hell"),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => SimpleDialog(
+                                  backgroundColor: this.secondary,
+                                  contentPadding: EdgeInsets.all(6.0),
+                                  title: Row(
+                                    children: [
+                                      Icon(
+                                        this.autoDarkMode
+                                            ? Icons.brightness_auto
+                                            : this.isDarkMode(context)
+                                                ? Icons.brightness_2
+                                                : Icons.brightness_high,
+                                        size: 35,
+                                        color: this.getTextColor(color: this.secondary),
+                                      ),
+                                      Divider(
+                                        indent: 10.0,
+                                      ),
+                                      Text(
+                                        "App Thema",
+                                        style: TextStyle(
+                                          color: this.getTextColor(color: this.secondary),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  children: [
+                                    SimpleDialogOption(
+                                      child: Text(
+                                        "Automatisch",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: this.getTextColor(color: this.secondary),
+                                        ),
+                                      ),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
+                                      onPressed: () {
+                                        setState(() {
+                                          this.autoDarkMode = true;
+                                          // this.manualDarkMode = false;
+                                        });
+                                        this.setAPBool("autoDarkMode", true);
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    SimpleDialogOption(
+                                      child: Text(
+                                        "Hell",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: this.getTextColor(color: this.secondary),
+                                        ),
+                                      ),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
+                                      onPressed: () {
+                                        setState(() {
+                                          this.autoDarkMode = false;
+                                          this.manualDarkMode = false;
+                                        });
+                                        this.setAPBool("autoDarkMode", false);
+                                        this.setAPBool("manualDarkMode", false);
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    SimpleDialogOption(
+                                      child: Text(
+                                        "Dunkel",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          color: this.getTextColor(color: this.secondary),
+                                        ),
+                                      ),
+                                      padding:
+                                          EdgeInsets.symmetric(vertical: 12.0, horizontal: 15.0),
+                                      onPressed: () {
+                                        setState(() {
+                                          this.autoDarkMode = false;
+                                          this.manualDarkMode = true;
+                                        });
+                                        this.setAPBool("autoDarkMode", false);
+                                        this.setAPBool("manualDarkMode", true);
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                          this.settingsDivier(),
+                          ListTile(
+                            leading: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.color_lens,
+                                  color: this.primary,
+                                ),
+                              ],
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(10),
+                                bottomRight: Radius.circular(10),
+                              ),
+                            ),
+                            title: Text("App Farbe"),
+                            subtitle: Text("Accentfarbe der App"),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  backgroundColor: this.secondary,
+                                  contentPadding: EdgeInsets.all(6.0),
+                                  title: Row(
+                                    children: [
+                                      Icon(
+                                        Icons.color_lens,
+                                        size: 35,
+                                        color: this.getTextColor(color: this.secondary),
+                                      ),
+                                      Divider(
+                                        indent: 10.0,
+                                      ),
+                                      Text(
+                                        "App Farbe",
+                                        style: TextStyle(
+                                          color: this.getTextColor(color: this.secondary),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  content: Container(
+                                    width: 100,
+                                    height: (Colors.primaries.length / 6 * 50).roundToDouble(),
+                                    child: GridView.count(
+                                      crossAxisCount: 6,
+                                      childAspectRatio: 1,
+                                      crossAxisSpacing: 0,
+                                      padding: EdgeInsets.all(8),
+                                      children: [
+                                        for (var i = 0; i < Colors.primaries.length; i++)
+                                          Container(
+                                            padding: EdgeInsets.all(4),
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                setState(() {
+                                                  this.primary = Colors.primaries[i];
+                                                  this.computeSecondary(Colors.primaries[i]);
+                                                });
+                                                setAPInt("primary", i);
+                                                Navigator.pop(context);
+                                              },
+                                              child: Material(
+                                                shape: CircleBorder(),
+                                                elevation: 2,
+                                                color: Colors.primaries[i],
+                                                child: this.primary == Colors.primaries[i]
+                                                    ? Icon(Icons.check,
+                                                        color: this.getTextColor(
+                                                            color: Colors.primaries[i]))
+                                                    : null,
+                                              ),
+                                            ),
+                                          )
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          this.settingsDivier(),
+                          SwitchListTile(
+                            activeColor: this.primary,
+                            secondary: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.format_color_fill,
+                                  color: this.primary,
+                                ),
+                              ],
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(10),
+                                bottomRight: Radius.circular(10),
+                              ),
+                            ),
+                            title: Text("Farbenfroh"),
+                            subtitle: Text("Mehr Farbe"),
+                            value: this.colorful,
+                            onChanged: (value) {
+                              setAPBool("colorful", value);
+                              setState(() {
+                                this.colorful = value;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    ListTile(
+                      title: Text(
+                        "Über",
+                        style: TextStyle(color: this.secondary, fontWeight: FontWeight.bold),
+                      ),
+                      dense: true,
+                    ),
+                    Card(
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.info_outline,
+                                  color: this.primary,
+                                ),
+                              ],
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.only(
+                                bottomLeft: Radius.circular(10),
+                                bottomRight: Radius.circular(10),
+                              ),
+                            ),
+                            title: Text("Über"),
+                            subtitle: Text("App Info & Author"),
+                            onTap: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => Scaffold(
+                                  appBar: AppBar(
+                                    iconTheme: IconThemeData(
+                                      color: this.primary,
+                                    ),
+                                    backgroundColor:
+                                        this.isDarkMode(context) ? Colors.black : Colors.white,
+                                    title: Text(
+                                      "Über",
+                                      style: TextStyle(
+                                        color: this.primary,
+                                      ),
+                                    ),
+                                  ),
+                                  body: Container(
+                                    child: Column(
+                                      children: [
+                                        // Expanded(
+                                        //   child: Image.asset("assets/launcher/icon.png"),
+                                        // ),
+                                        Card(
+                                          child: Column(
+                                            children: [
+                                              ListTile(
+                                                isThreeLine: true,
+                                                leading: Expanded(
+                                                  child: Image.asset("assets/launcher/icon.png"),
+                                                ),
+                                                title: Text(
+                                                  "Fertretungsplan",
+                                                  style: TextStyle(color: this.primary),
+                                                ),
+                                                subtitle: Text(
+                                                  "Vertretungsplan in Flutter\nVersion: " +
+                                                      _packageInfo.version,
+                                                  style: TextStyle(color: this.primary),
+                                                ),
+                                              ),
+                                              this.settingsDivier(),
+                                              ListTile(
+                                                isThreeLine: true,
+                                                leading: Expanded(
+                                                  child: Image.asset(
+                                                    "assets/zlyfer.png",
+                                                  ),
+                                                ),
+                                                title: Text(
+                                                  "Author",
+                                                  style: TextStyle(color: this.primary),
+                                                ),
+                                                subtitle: Text(
+                                                  "Frederik 'zlyfer' Shull\nWeb & App Entwicklung",
+                                                  style: TextStyle(color: this.primary),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
           bottomNavigationBar: this.showView == "vplan"
