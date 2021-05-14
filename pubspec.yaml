@@ -1,10 +1,10 @@
 name: fertretungsplan
-description: A new Flutter project.
+description: Vertretungsplan in Flutter
 
 # The following line prevents the package from being accidentally published to
 # pub.dev using `pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
-version: 0.1.3+cabbage-pont
+version: 0.1.31+cabbage-pont
 
 environment:
   sdk: ">=2.7.0 <3.0.0"

@@ -18,11 +18,11 @@ class FPlanState extends State<FPlan> {
   // vplan settings
   String showView = "vplan";
   bool loading = false;
+  bool canRefresh = true;
   List<dynamic> combination = [];
   SearchBar searchBar;
   String searchText = "";
-  List<String> header = [];
-  List<String> possibleHeader = [
+  List<String> header = [
     "Kurs",
     "Fach",
     "Stunde",
@@ -34,7 +34,8 @@ class FPlanState extends State<FPlan> {
     // "Datum",
     // "ID"
   ];
-  List<int> headerOrder = [];
+  // List<int> activeHeader;
+  // List<String> header = [];
   dynamic headerNames;
   List<dynamic> vplan;
   dynamic lastKurs;
@@ -47,6 +48,14 @@ class FPlanState extends State<FPlan> {
   Color primary;
   Color secondary = Colors.blue.shade400;
   int fixedColumn;
+  var viewTranslator = {
+    "vplan": {
+      "appBarTitle": "Vertretungsplan",
+    },
+    "settings": {
+      "appBarTitle": "Einstellungen",
+    }
+  };
 
   FPlanState() {
     this.searchBar = new SearchBar(
@@ -125,11 +134,9 @@ class FPlanState extends State<FPlan> {
   loadAppPreferences() async {
     SharedPreferences appPrefs = await SharedPreferences.getInstance();
     this.manualDarkMode =
-        appPrefs.containsKey("manualDarkMode") ? appPrefs.getBool("manualDarkMode") : false;
-    // appPrefs.setBool("manualDarkMode", this.manualDarkMode);
+        appPrefs.containsKey("manualDarkMode") ? appPrefs.getBool("manualDarkMode") : true;
     this.autoDarkMode =
-        appPrefs.containsKey("autoDarkMode") ? appPrefs.getBool("autoDarkMode") : false;
-    // appPrefs.setBool("autoDarkMode", this.autoDarkMode);
+        appPrefs.containsKey("autoDarkMode") ? appPrefs.getBool("autoDarkMode") : true;
     if (appPrefs.containsKey("primary"))
       this.primary = Colors.primaries[appPrefs.getInt("primary")];
     else
@@ -139,14 +146,7 @@ class FPlanState extends State<FPlan> {
       this.fixedColumn = appPrefs.getInt("fixedColumn");
     else
       this.fixedColumn = 0;
-    if (appPrefs.containsKey("header"))
-      this.header = appPrefs.getStringList("header");
-    else
-      this.header = List.from(this.possibleHeader);
-    if (appPrefs.containsKey("headerOrder"))
-      this.headerOrder = appPrefs.getStringList("headerOrder").map((i) => int.parse(i)).toList();
-    else
-      this.headerOrder = [0, 1, 2, 3, 4, 5, 6];
+    if (appPrefs.containsKey("header")) this.header = appPrefs.getStringList("header");
 
     // Init VPlan
     this.init();
@@ -172,16 +172,18 @@ class FPlanState extends State<FPlan> {
     appPrefs.setInt(key, value);
   }
 
+  setAPIntList(String key, List<int> values) async {
+    List<String> stringValues = values.map((e) => e.toString()).toList();
+    this.setAPStringList(key, stringValues);
+  }
+
   @override
   void initState() {
     this.loadAppPreferences();
     super.initState();
   }
 
-  bool canRefresh = true;
-
   void init({context}) {
-    print("test1");
     if (this.canRefresh) {
       setState(() {
         this.loading = true;
@@ -269,7 +271,7 @@ class FPlanState extends State<FPlan> {
     }
   }
 
-  computeSecondary(color) {
+  void computeSecondary(color) {
     double div = 1.2;
     this.secondary =
         color.withRed(color.red ~/ div).withGreen(color.green ~/ div).withBlue(color.blue ~/ div);
@@ -363,15 +365,6 @@ class FPlanState extends State<FPlan> {
             element[this.header[this.fixedColumn]] == this.header[this.fixedColumn])
         .toList();
   }
-
-  var viewTranslator = {
-    "vplan": {
-      "appBarTitle": "Vertretungsplan",
-    },
-    "settings": {
-      "appBarTitle": "Einstellungen",
-    }
-  };
 
   bool isDarkMode(context) {
     return this.autoDarkMode
@@ -540,7 +533,8 @@ class FPlanState extends State<FPlan> {
                                           style: TextStyle(
                                               color: this.getTextColor(
                                                   color: this.getColumnColor(
-                                                      entry[this.header[this.fixedColumn]]))),
+                                            entry[this.header[this.fixedColumn]],
+                                          ))),
                                         ),
                                       ),
                                     ),
@@ -558,30 +552,24 @@ class FPlanState extends State<FPlan> {
                                     Row(
                                       children: <Widget>[
                                         for (int key = 0; key < this.header.length; key++)
-                                          if (this.header[this.headerOrder[key]] !=
-                                              this.header[this.fixedColumn])
+                                          if (this.header[key] != this.header[this.fixedColumn])
                                             Center(
                                               child: Container(
                                                 height: 50,
-                                                width: this.getColumnWidth(
-                                                    this.header[this.headerOrder[key]]),
+                                                width: this.getColumnWidth(this.header[key]),
                                                 alignment: Alignment.center,
-                                                color: this.getCellBackgroundColor(entry,
-                                                    this.header[this.headerOrder[key]], context),
+                                                color: this.getCellBackgroundColor(
+                                                    entry, this.header[key], context),
                                                 padding: const EdgeInsets.all(8),
                                                 child: Text(
-                                                  entry[this.header[this.headerOrder[key]]] == "N/A"
+                                                  entry[this.header[key]] == "N/A"
                                                       ? "Keine Information"
-                                                      : entry[this.header[this.headerOrder[key]]],
+                                                      : entry[this.header[key]],
                                                   style: TextStyle(
                                                       color: this.getTextColor(
                                                           color: this.getCellBackgroundColor(
-                                                              entry,
-                                                              this.header[this.headerOrder[key]],
-                                                              context)),
-                                                      fontStyle: entry[this
-                                                                  .header[this.headerOrder[key]]] ==
-                                                              "N/A"
+                                                              entry, this.header[key], context)),
+                                                      fontStyle: entry[this.header[key]] == "N/A"
                                                           ? FontStyle.italic
                                                           : null),
                                                 ),
@@ -940,44 +928,64 @@ class FPlanState extends State<FPlan> {
                                   ),
                                   body: ReorderableListView(
                                     onReorder: (int oldIndex, int newIndex) {
+                                      List<String> headerCopy = List.from(this.header);
+                                      String item = headerCopy.removeAt(oldIndex);
+                                      List<String> headerTail = List.from(headerCopy
+                                          .sublist(oldIndex > newIndex ? newIndex : newIndex - 1));
+                                      headerCopy.removeRange(
+                                          oldIndex > newIndex ? newIndex : newIndex - 1,
+                                          headerCopy.length);
+                                      headerCopy.add(item);
+                                      headerCopy.addAll(headerTail);
                                       setState(() {
-                                        int oI = this.headerOrder[oldIndex];
-                                        this.headerOrder[oldIndex] = this.headerOrder[newIndex];
-                                        this.headerOrder[newIndex] = oI;
+                                        this.header = headerCopy;
                                       });
-                                      setAPStringList("headerOrder",
-                                          this.headerOrder.map((i) => i.toString()).toList());
+                                      setAPStringList("header", this.header);
                                     },
                                     children: [
-                                      for (int key = 0; key < this.possibleHeader.length; key++)
-                                        if (this.headerOrder[key] != this.fixedColumn)
-                                          CheckboxListTile(
-                                            controlAffinity: ListTileControlAffinity.leading,
-                                            secondary: Icon(Icons.drag_handle),
-                                            checkColor: this.secondary,
-                                            activeColor: this.getTextColor(),
-                                            value: this.header.contains(
-                                                  this.possibleHeader[this.headerOrder[key]],
-                                                ),
-                                            onChanged: (value) {
-                                              setState(() {
-                                                if (!value)
-                                                  this.header.remove(
-                                                      this.possibleHeader[this.headerOrder[key]]);
-                                                else
-                                                  this.header.insert(this.headerOrder[key],
-                                                      this.possibleHeader[this.headerOrder[key]]);
-                                                setAPStringList("header", this.header);
-                                              });
-                                            },
-                                            key: Key(
-                                              this.possibleHeader[this.headerOrder[key]],
+                                      for (int key = 0; key < this.header.length; key++)
+                                        // CheckboxListTile(
+                                        ListTile(
+                                          title: Text(
+                                            this.header[key],
+                                            style: TextStyle(
+                                              color: this.getTextColor(),
                                             ),
-                                            tileColor: this.secondary,
-                                            title: Text(
-                                              this.possibleHeader[this.headerOrder[key]],
-                                            ),
-                                          )
+                                          ),
+                                          tileColor: this.secondary,
+                                          // controlAffinity: ListTileControlAffinity.leading,
+                                          trailing: Icon(
+                                            Icons.drag_handle,
+                                            color: this.getTextColor(),
+                                          ),
+                                          // secondary: Icon(Icons.drag_handle),
+                                          // checkColor: this.secondary,
+                                          // activeColor: this.getTextColor(),
+                                          // value: this.header.contains(
+                                          //       this.header[key],
+                                          //     ),
+                                          key: Key(
+                                            this.header[key],
+                                          ),
+                                          // onChanged: (value) {
+                                          //   if (key != this.fixedColumn)
+                                          //     setState(() {
+                                          //       if (!value) {
+                                          //         int index = this.activeHeader.indexOf(key);
+                                          //         this.activeHeader.remove(index);
+                                          //       } else
+                                          //         this
+                                          //             .activeHeader
+                                          //             .insert(this.activeHeader.length, key);
+                                          //       this.generateHeader();
+                                          //     });
+                                          //   print("hi");
+                                          //   this.activeHeader.forEach((element) {
+                                          //     print(element);
+                                          //   });
+                                          //   setAPIntList("activeHeader", this.activeHeader);
+                                          // },
+                                        )
                                     ],
                                   ),
                                 ),
