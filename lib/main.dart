@@ -1083,7 +1083,7 @@ class FPlanState extends State<FPlan> {
                               ),
                             ),
                             title: Text("Über"),
-                            subtitle: Text("App Info & Author"),
+                            subtitle: Text("App Info & Autor"),
                             onTap: () {
                               showDialog(
                                 context: context,
@@ -1134,7 +1134,7 @@ class FPlanState extends State<FPlan> {
                                                   ),
                                                 ),
                                                 title: Text(
-                                                  "Author",
+                                                  "Autor",
                                                   style: TextStyle(color: this.primary),
                                                 ),
                                                 subtitle: Text(
