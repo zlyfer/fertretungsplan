@@ -1112,9 +1112,9 @@ class FPlanState extends State<FPlan> {
                                             children: [
                                               ListTile(
                                                 isThreeLine: true,
-                                                leading: Expanded(
-                                                  child: Image.asset("assets/launcher/icon.png"),
-                                                ),
+                                                // leading: Expanded(
+                                                //   child: Image.asset("assets/launcher/icon.png"),
+                                                // ),
                                                 title: Text(
                                                   "Fertretungsplan",
                                                   style: TextStyle(color: this.primary),
@@ -1128,11 +1128,9 @@ class FPlanState extends State<FPlan> {
                                               this.settingsDivier(),
                                               ListTile(
                                                 isThreeLine: true,
-                                                leading: Expanded(
-                                                  child: Image.asset(
-                                                    "assets/zlyfer.png",
-                                                  ),
-                                                ),
+                                                // leading: Expanded(
+                                                //   child: Image.asset("assets/zlyfer.png"),
+                                                // ),
                                                 title: Text(
                                                   "Autor",
                                                   style: TextStyle(color: this.primary),
