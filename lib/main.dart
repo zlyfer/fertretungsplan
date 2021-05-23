@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+// import 'package:flutter_downloader/flutter_downloader.dart';
 import 'package:flutter_search_bar/flutter_search_bar.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -104,6 +105,12 @@ class FPlanState extends State<FPlan> {
         color: this.colorful ? this.getTextColor() : this.primary,
       ),
       actions: <Widget>[
+        // IconButton(
+        //   onPressed: () {
+        //     this.checkUpdate();
+        //   },
+        //   icon: const Icon(Icons.update),
+        // ),
         searchBar.getSearchAction(context),
         IconButton(
           onPressed: this.canRefresh
@@ -112,10 +119,37 @@ class FPlanState extends State<FPlan> {
                 }
               : null,
           icon: const Icon(Icons.refresh),
-        )
+        ),
       ],
     );
   }
+
+  // checkUpdate() async {
+  //   WidgetsFlutterBinding.ensureInitialized();
+  //   await FlutterDownloader.initialize(
+  //       debug: true // optional: set false to disable printing logs to console
+  //       );
+
+  //   http
+  //       .get(Uri.https('api.github.com', 'repos/zlyfer/fertretungsplan/releases/latest'))
+  //       .then((data) async {
+  //     var decoded = jsonDecode(data.body);
+  //     String apkUrl = decoded["assets"][0]["browser_download_url"];
+  //     String changelog = decoded["body"];
+  //     print(apkUrl);
+  //     print(changelog);
+
+  //     await FlutterDownloader.enqueue(
+  //       url: apkUrl,
+  //       savedDir: '/sdcard/Download',
+  //       showNotification: true, // show download progress in status bar (for Android)
+  //       openFileFromNotification:
+  //           true, // click on notification to open downloaded file (for Android)
+  //     );
+  //   }).catchError((error) {
+  //     print(error);
+  //   });
+  // }
 
   search(searchText) {
     setState(() {
@@ -191,6 +225,7 @@ class FPlanState extends State<FPlan> {
 
   @override
   void initState() {
+    // this.checkUpdate();
     this.loadAppPreferences();
     super.initState();
   }
@@ -246,39 +281,41 @@ class FPlanState extends State<FPlan> {
             this.canRefresh = true;
           });
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: WillPopScope(
-            onWillPop: () async {
-              ScaffoldMessenger.of(context).removeCurrentSnackBar();
-              return true;
-            },
-            child: Text('Laden erfolgreich', style: TextStyle(color: Colors.white)),
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(milliseconds: 1500),
-          action: SnackBarAction(
-            textColor: Colors.white,
-            label: 'Okay',
-            onPressed: () {},
-          ),
-        ));
+        if (context != null)
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: WillPopScope(
+              onWillPop: () async {
+                ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                return true;
+              },
+              child: Text('Laden erfolgreich', style: TextStyle(color: Colors.white)),
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(milliseconds: 1500),
+            action: SnackBarAction(
+              textColor: Colors.white,
+              label: 'Okay',
+              onPressed: () {},
+            ),
+          ));
       }).catchError((error) {
         setState(() {
           this.loading = false;
-          this.canRefresh = false;
+          this.canRefresh = true;
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Fehler beim Laden', style: TextStyle(color: Colors.white)),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-          duration: Duration(milliseconds: 2500),
-          action: SnackBarAction(
-            textColor: Colors.white,
-            label: 'Okay',
-            onPressed: () {},
-          ),
-        ));
+        if (context != null)
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Fehler beim Laden', style: TextStyle(color: Colors.white)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(milliseconds: 2500),
+            action: SnackBarAction(
+              textColor: Colors.white,
+              label: 'Okay',
+              onPressed: () {},
+            ),
+          ));
       });
     }
   }
@@ -746,6 +783,8 @@ class FPlanState extends State<FPlan> {
                                   ),
                                   body: ReorderableListView(
                                     onReorder: (int oldIndex, int newIndex) {
+                                      oldIndex++;
+                                      newIndex++;
                                       List<String> headerCopy = List.from(this.header);
                                       String item = headerCopy.removeAt(oldIndex);
                                       List<String> headerTail = List.from(headerCopy
@@ -761,7 +800,7 @@ class FPlanState extends State<FPlan> {
                                       setAPStringList("header", this.header);
                                     },
                                     children: [
-                                      for (int key = 0; key < this.header.length; key++)
+                                      for (int key = 1; key < this.header.length; key++)
                                         // CheckboxListTile(
                                         ListTile(
                                           title: Text(
